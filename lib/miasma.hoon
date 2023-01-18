@@ -2,19 +2,37 @@
 /+  *mip
 |%
 ::
+::  helpers
+::
+++  make-schema
+  |=  lis=(list [term column-type])
+  ^-  schema
+  (~(gas by *schema) lis)
+::
+++  make-indices
+  |=  lis=(list key-type)
+  ^-  indices
+  %-  ~(gas by *indices)
+  %+  turn  lis
+  |=  =key-type
+  [cols.key-type key-type]
+::
 ::  database engine
 ::
 ++  database
   =>  |%
-      +$  table-name  term
+      +$  table-name  @
       +$  tables  (map table-name _tab)
       ::  stored procedures, computed views here
       --
   =|  =tables
   |%
-  ++  add-tab
-    |=  [name=table-name tab=_tab]
-    +>.$(tables (~(put by tables) name tab))
+  ++  add-table
+    |=  [name=table-name =table]
+    ?:  (~(has by tables) name)
+      ~|("miasma: table with that id already exists" !!)
+    =+  (~(create tab table) ~)
+    +>.$(tables (~(put by tables) name -))
   ::
   ++  insert
     |=  [name=table-name rows=(list row)]
@@ -29,6 +47,12 @@
   ::
   ++  rename
     !!  ::  TODO add to +tab
+  ::
+  ++  add-tab
+    |=  [name=table-name tab=_tab]
+    ?:  (~(has by tables) name)
+      ~|("miasma: tab with that id already exists" !!)
+    +>.$(tables (~(put by tables) name tab))
   ::
   ++  q
     |=  =query

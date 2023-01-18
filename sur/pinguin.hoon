@@ -19,7 +19,7 @@
 ::
 ++  messages-indices
   :~  [~[%id] primary=& unique=& clustered=&]
-      [~[%timestamp] primary=& unique=& clustered=&]
+      [~[%timestamp] primary=| unique=& clustered=&]
       ::  can add an author index if we want to add search by author
   ==
 ::
@@ -78,17 +78,17 @@
       [%members [4 | %blob]]
   ==
 ::
-++  conversation-indices
-  :~  [~[%id] primary=%.y unique=%.y clustered=%.n]
-      [~[%last-active] primary=%.n unique=%.n clustered=%.y]
+++  conversations-indices
+  :~  [~[%id] primary=& unique=& clustered=|]
+      [~[%last-active] primary=| unique=| clustered=&]
   ==
 ::
 ::  used to mold the blob inside schema
 ::
 +$  conversation-metadata
-  $%  [%single-leader leader=@p members=(set @p)]
-      [%many-leader leaders=(set @p) members=(set @p)]
-      [%free-for-all members=(set @p)]
+  $%  [%single-leader members=(set @p) leader=@p]
+      [%many-leader members=(set @p) leaders=(set @p)]
+      [%free-for-all members=(set @p) ~]
   ==
 ::
 ::  a conversation id is constructed by hashing the concatenation
@@ -104,7 +104,7 @@
       messages-table-id=@ux
       last-active=@da
       router=@p
-      members=[%blob conversation-metadata]
+      meta=[%blob conversation-metadata]
       ~
   ==
 ::
@@ -113,8 +113,8 @@
 ::
 +$  ping
   $%  ::  these are sent to / received from router
-      [%message =message]  ::  TODO add ship-sig so router can't spoof
-      [%react on=message-id =reaction]
+      [%message =conversation-id =message]  ::  TODO add ship-sig so router can't spoof
+      [%react =conversation-id on=message-id =reaction]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept
@@ -127,8 +127,8 @@
   $%  [%make-conversation config=conversation-metadata]
       [%leave-conversation =conversation-id]
       ::
-      [%send-message =message-kind content=@t reference=(unit message-id)]
-      [%send-reaction on=message-id =reaction]
+      [%send-message =conversation-id =message-kind content=@t reference=(unit message-id)]
+      [%send-reaction =conversation-id on=message-id =reaction]
       ::
       [%make-invite to=@p =conversation-id]
       [%accept-invite =conversation-id]
