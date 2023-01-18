@@ -1,0 +1,143 @@
+|%
+::
+::  schema: a table handles one conversation
+::
+++  messages-schema
+  :~  [%id [0 | %ud]]
+      [%author [1 | %p]]
+      [%timestamp [2 | %da]]
+      [%seen [3 | %f]]
+      [%kind [4 | %tas]]
+      [%content [5 | %t]]
+      [%reference [6 & %ud]]  ::  for replies
+      [%reactions [7 | %list]]
+      ::  experiment: can we add mentions *later*?
+  ==
+::
+::  indices: columns in table we keep an index of
+::  compute time to handle a message guarantees unique timestamps :)
+::
+++  messages-indices
+  :~  [~[%id] primary=& unique=& clustered=&]
+      [~[%timestamp] primary=& unique=& clustered=&]
+      ::  can add an author index if we want to add search by author
+  ==
+::
+::  the type that goes into the database
+::  we can trust the database, it's ours
+::  so we can do this to turn a row into a message:
+::  !<(message [-:!>(*message) row])
+::
++$  message
+  $:  id=message-id
+      author=@p
+      timestamp=@da
+      seen=?
+      kind=message-kind
+      content=@t
+      reference=(unit message-id)
+      reactions=(list (pair @p reaction))
+      ~
+  ==
+::
+::  a message id is an ordered integer starting at 0
+::
++$  message-id  @ud
+::
+::  a message can be one of these things -- messages that want to
+::  be many things can be broken into multiple messages.
+::
++$  message-kind
+  $?  %text  %image
+      %link  %code
+      %reply
+      ::  in these kinds, message content is a `@t`(scot %p @p)
+      %member-add     ::  in FFA, anyone can send this, otherwise only leaders
+      %member-remove  ::  in FFA, only member leaving can send
+      %leader-add     ::  only for %many-leader
+      %leader-remove  ::  only for %many-leader
+      %change-router  ::  TBD
+  ==
+::
+::  these are the only reactions you're allowed to have to something
+::
++$  reaction
+  $?  %love       %hate
+      %like       %dislike
+      %emphasize  %question
+  ==
+::
+::  a conversation is a groupchat of 2-100 ships.
+::  schema: we keep a table of all our conversations
+::
+++  conversations-schema
+  :~  [%id [0 | %ux]]
+      [%messages-table-id [[1 | %ux]]]
+      [%last-active [2 | %da]]
+      [%router [3 | %p]]
+      [%members [4 | %blob]]
+  ==
+::
+++  conversation-indices
+  :~  [~[%id] primary=%.y unique=%.y clustered=%.n]
+      [~[%last-active] primary=%.n unique=%.n clustered=%.y]
+  ==
+::
+::  used to mold the blob inside schema
+::
++$  conversation-metadata
+  $%  [%single-leader leader=@p members=(set @p)]
+      [%many-leader leaders=(set @p) members=(set @p)]
+      [%free-for-all members=(set @p)]
+  ==
+::
+::  a conversation id is constructed by hashing the concatenation
+::  of the creator and some entropy grabbed by the creator
+::
++$  conversation-id  @ux
+::
+::  can do this to turn a row into a conversation:
+::  !<(conversation [-:!>(*conversation) row])
+::
++$  conversation
+  $:  id=conversation-id
+      messages-table-id=@ux
+      last-active=@da
+      router=@p
+      members=[%blob conversation-metadata]
+      ~
+  ==
+::
+::  all messaging is done through pokes.
+::  messages are sent to router, who then pokes all members
+::
++$  ping
+  $%  ::  these are sent to / received from router
+      [%message =message]  ::  TODO add ship-sig so router can't spoof
+      [%react on=message-id =reaction]
+      ::  these are sent to anyone
+      [%invite =conversation]            ::  person creating the invite sends
+      [%accept-invite =conversation-id]  ::  %member-add message upon accept
+      [%reject-invite =conversation-id]
+  ==
+::
+::  pokes that our frontend performs:
+::
++$  action
+  $%  [%make-conversation config=conversation-metadata]
+      [%leave-conversation =conversation-id]
+      ::
+      [%send-message =message-kind content=@t reference=(unit message-id)]
+      [%send-reaction on=message-id =reaction]
+      ::
+      [%make-invite to=@p =conversation-id]
+      [%accept-invite =conversation-id]
+      [%reject-invite =conversation-id]
+      ::
+      [%block who=@p]
+      [%unblock who=@p]
+  ==
+::
+::  TODO: update type that our FE subscription gets
+::
+--
