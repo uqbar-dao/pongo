@@ -5,12 +5,13 @@
 ++  messages-schema
   :~  [%id [0 | %ud]]
       [%author [1 | %p]]
-      [%timestamp [2 | %da]]
-      [%seen [3 | %f]]
-      [%kind [4 | %tas]]
-      [%content [5 | %t]]
-      [%reference [6 & %ud]]  ::  for replies
-      [%reactions [7 | %list]]
+      [%signature [2 | %blob]]
+      [%timestamp [3 | %da]]
+      [%seen [4 | %f]]
+      [%kind [5 | %tas]]
+      [%content [6 | %t]]
+      [%reference [7 & %ud]]  ::  for replies
+      [%reactions [8 | %list]]
       ::  experiment: can we add mentions *later*?
   ==
 ::
@@ -18,8 +19,8 @@
 ::  compute time to handle a message guarantees unique timestamps :)
 ::
 ++  messages-indices
-  :~  [~[%id] primary=& unique=& clustered=&]
-      [~[%timestamp] primary=| unique=& clustered=&]
+  :~  [~[%id] primary=& autoincrement=~ unique=& clustered=&]
+      [~[%timestamp] primary=| autoincrement=~ unique=& clustered=&]
       ::  can add an author index if we want to add search by author
   ==
 ::
@@ -31,6 +32,7 @@
 +$  message
   $:  id=message-id
       author=@p
+      signature=[%blob p=[p=@ux q=ship r=life]]
       timestamp=@da
       seen=?
       kind=message-kind
@@ -79,8 +81,8 @@
   ==
 ::
 ++  conversations-indices
-  :~  [~[%id] primary=& unique=& clustered=|]
-      [~[%last-active] primary=| unique=| clustered=&]
+  :~  [~[%id] primary=& autoincrement=~ unique=& clustered=|]
+      [~[%last-active] primary=| autoincrement=~ unique=| clustered=&]
   ==
 ::
 ::  used to mold the blob inside schema
@@ -104,7 +106,7 @@
       messages-table-id=@ux
       last-active=@da
       router=@p
-      meta=[%blob conversation-metadata]
+      meta=[%blob p=conversation-metadata]
       ~
   ==
 ::
@@ -113,7 +115,7 @@
 ::
 +$  ping
   $%  ::  these are sent to / received from router
-      [%message =conversation-id =message]  ::  TODO add ship-sig so router can't spoof
+      [%message =conversation-id routed=? =message]  ::  TODO add ship-sig so router can't spoof
       [%react =conversation-id on=message-id =reaction]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends

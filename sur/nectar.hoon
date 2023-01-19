@@ -1,4 +1,4 @@
-::  miasma:
+::  nectar:
 ::     relational
 ::            database
 ::
@@ -21,11 +21,19 @@
 +$  indices  (map (list column-name) key-type)
 ::
 +$  key-type
-  $:  cols=(list column-name)  ::  which columns included in key (at list position)
-      primary=?                ::  only one primary key per table (must be unique!)
-      unique=?                 ::  if not unique, store rows in list under key
-      clustered=?              ::  uses col-ord -- if clustered,
-  ==                           ::  must be *singular* column in key.
+  $:  ::  which columns included in key (at list position)
+      cols=(list column-name)
+      ::  only one primary key per table (must be unique!)
+      primary=?
+      ::  if non-null, swaps *singular* key column with the @ud
+      ::  value of +(current one), and increments itself.
+      autoincrement=(unit @ud)
+      ::  if not unique, store rows in submap under key
+      unique=?
+      ::  uses col-ord -- if clustered,
+      ::  must be *singular* column in key.
+      clustered=?
+  ==
 ::
 +$  column-name  term
 +$  column-type
@@ -70,6 +78,9 @@
         [%gte @]  [%lte @]
         [%gth @]  [%lth @]
         [%nul ~]
+        ::  only accepted on clustered indices
+        [%top n=@]     ::  get the first n rows in order
+        [%bottom n=@]  ::  get the last n rows in order
     ==
   $-(value ?)
 ::
@@ -80,9 +91,9 @@
   $-([value value] ?)
 ::
 +$  query
-  $%  [%select table=?(term query) where=condition]
-      [%project table=?(term query) cols=(list term)]
-      [%theta-join table=?(term query) with=?(term query) where=condition]
-      [%table table=term ~]  ::  to avoid type-loop
+  $%  [%select table=?(@ query) where=condition]
+      [%project table=?(@ query) cols=(list term)]
+      [%theta-join table=?(@ query) with=?(@ query) where=condition]
+      [%table table=@ ~]  ::  to avoid type-loop
   ==
 --
