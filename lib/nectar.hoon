@@ -26,7 +26,6 @@
       ::  stored procedures, computed views here
       --
   =|  =tables
-  =|  verbose=?
   |%
   ++  add-table
     |=  [name=table-name =table]
@@ -143,8 +142,8 @@
   ::
   ++  create
     |=  rows=(list row)
-    ~&  >  "%nectar: making table"
-    ~>  %bout
+    ::  ~&  >  "%nectar: making table"
+    ::  ~>  %bout
     ::
     ::  build a new table
     ::  destroys any existing records
@@ -274,8 +273,8 @@
   ::
   ++  select
     |=  [at-key=(list term) where=condition]
-    ~&  >  "%nectar: performing select"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing select"
+    ::  ~>  %bout
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -460,8 +459,8 @@
   ::
   ++  insert
     |=  [rows=(list row) update=?]
-    ~&  >  "%nectar: performing insert/update"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing insert/update"
+    ::  ~>  %bout
     =.  records.table
       %-  ~(rut by records.table)
       |=  [name=(list term) =record]
@@ -536,8 +535,8 @@
   ::
   ++  delete
     |=  [at-key=(list term) where=condition]
-    ~&  >  "%nectar: performing delete"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing delete"
+    ::  ~>  %bout
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -571,8 +570,8 @@
   ::
   ++  project
     |=  [at-key=(list term) cols=(list term)]
-    ~&  >  "%nectar: performing projection"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing projection"
+    ::  ~>  %bout
     ::  need to iterate through all rows, so no need
     ::  to determine optimal record to pull from?
     =/  new-schema
@@ -607,8 +606,8 @@
   ::
   ++  cross
     |=  [at-key=(list term) new-key=key-type with=(pair schema (list row))]
-    ~&  >  "%nectar: performing cross-product"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing cross-product"
+    ::  ~>  %bout
     =/  l  ~(wyt by schema.table)
     =.  schema.table
       %-  ~(gas by *(map term column-type))
@@ -641,8 +640,8 @@
   ::
   ++  union
     |=  [at-key=(list term) with=(pair schema (list row))]
-    ~&  >  "%nectar: performing union"
-    ~>  %bout
+    ::  ~&  >  "%nectar: performing union"
+    ::  ~>  %bout
     ^-  (pair schema (list row))
     =/  l  ~(wyt by schema.table)
     ::  unlike cross-product, if two columns in schemae
