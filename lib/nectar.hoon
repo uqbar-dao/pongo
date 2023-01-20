@@ -34,15 +34,17 @@
     =+  (~(create tab table) ~)
     +>.$(tables (~(put by tables) name -))
   ::
-  ++  insert
-    |=  [name=table-name rows=(list row)]
+  ++  insert-rows
+    |=  [name=table-name rows=(list *)]
     =/  tab  (~(got by tables) name)
-    (add-tab name (insert:tab rows update=%.n))
+    =-  (add-tab name (insert:tab - update=%.n))
+    `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
-  ++  update
-    |=  [name=table-name rows=(list row)]
+  ++  update-rows
+    |=  [name=table-name rows=(list *)]
     =/  tab  (~(got by tables) name)
-    (add-tab name (insert:tab rows update=%.y))
+    =-  (add-tab name (insert:tab - update=%.y))
+    `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
   ++  delete
     |=  [name=table-name where=condition]
@@ -55,13 +57,20 @@
   ::
   ++  add-tab
     |=  [name=table-name tab=_tab]
-    ::  asdf
     +>.$(tables (~(put by tables) name tab))
   ::
   ++  q
-    |=  =query
+    |=  =query  ::  why can't i make this a wet gate?
     ^-  (list row)
     (get-rows:- +):(run-query query ~)
+  ::
+  ++  update
+    |=  =query
+    ?>  ?=(%update -.query)
+    =/  tab=_tab  (~(got by tables) table.query)
+    =-  +>.$(tables -)
+    %+  ~(put by tables)  table.query
+    (update:tab primary-key.table:tab where.query col.query func.query)
   ::
   ++  run-query
     |=  [=query query-cols=(list column-name)]
@@ -549,7 +558,7 @@
         ::  map
         (create ~(val by (~(dif by p.rec) p.del)))
       ?>  ?=(%| -.del)
-      ::  jar
+      ::  mip
       ::  %|^(dif-jar p.rec p.del)
       !!
     ::  for mop, rather than defer to select,
@@ -564,6 +573,21 @@
         ~
       `row
     (create skipped)
+  ::
+  ::  update all rows that meet condition at column with function
+  ::
+  ++  update
+    |=  [at-key=(list term) where=condition col=term func=$-(value value)]
+    =?    at-key
+        ?=(~ at-key)
+      primary-key.table
+    =/  col-spot  spot:(~(got by schema.table) col)
+    %+  insert
+      %+  turn
+        `(list row)`(get-rows:(select at-key where) at-key)
+      |=  =row
+      (snap row col-spot (func (snag col-spot row)))
+    update=&
   ::
   ::  produces a list of rows along with a schema for interpreting
   ::  those rows, since projection creates a new row-ordering

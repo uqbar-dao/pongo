@@ -97,7 +97,7 @@
         |=  to=@p
         %+  ~(poke pass:io /route-message)
           [to %pongo]
-        ping+!>(`^ping`[%message cid routed=& message])
+        ping+!>(`^ping`[%message routed=& cid message])
       ::  if we are not router, we only receive messages from router
       ::  only accept the message if it's from a member of that conversation
       ::  add it to our messages table for that conversation
@@ -108,9 +108,9 @@
         ?.  ?=(%member-remove kind.message)
           `state
         =.  db.state
-          =-  %+  update:db.state
+          %+  update-rows:db.state
             %conversations
-          ~[!<(row:nectar [-:!>(*row:nectar) -])]
+          :_  ~
           convo(members.p.meta (~(del in members.p.meta.convo) author.message))
         `state
       ?.  =+  (make-message-hash [content timestamp]:message)
@@ -127,9 +127,8 @@
       ::  we update our conversation to reflect it -- only
       ::  if message was sent by someone allowed to do it
       =.  db.state
-        =-  %+  update:db.state
-          %conversations
-        ~[!<(row:nectar [-:!>(*row:nectar) -])]
+        =-  (update-rows:db.state %conversations -)
+        :_  ~
         ^-  conversation
         =.  last-active.convo  now.bowl
         ?.  ?&  ?=  $?  %member-add  %member-remove
@@ -169,15 +168,35 @@
           ==
         ==
       =.  db.state
-        %+  insert:db.state
-          messages-table-id.convo
-        ::  TODO fix this, no good
-        ~[!<(row:nectar [-:!>(*row:nectar) message])]
+        (insert-rows:db.state messages-table-id.convo ~[message])
       `state
     ::
         %react
-      ::  we've received a new message-reaction
-      !!
+      ::  we've received a new message reaction
+      ::  if we are router, we now poke every member with this react
+      ?:  &(!routed.ping =(our.bowl router.convo))
+        :_  state
+        %+  turn  ~(tap in members.p.meta.convo)
+        |=  to=@p
+        %+  ~(poke pass:io /route-message)
+          [to %pongo]
+        ping+!>(ping(routed &))
+      ?.  =+  (make-reaction-hash [reaction on]:signed-reaction.ping)
+          (validate:sig our.bowl signature.signed-reaction.ping - now.bowl)
+        ~&  >>>  "%pongo: rejecting reaction, invalid signature"  `state
+      ?.  (~(has in members.p.meta.convo) author.signed-reaction.ping)
+        ~&  >>>  "%pongo: rejecting reaction"  `state
+      ?.  (~(has by tables:db.state) messages-table-id.convo)
+        ~&  >>>  "%pongo: rejecting reaction"  `state
+      =.  db.state
+        =+  |=  v=value:nectar
+            ^-  value:nectar
+            ?>  ?=(^ v)
+            ?>  ?=(%m -.v)
+            [%m (~(put by p.v) [author reaction]:signed-reaction.ping)]
+        %-  update:db.state
+        [%update messages-table-id.convo [%s %id %& %eq on.signed-reaction.ping] %reactions -]
+      `state
     ::
         %invite
       ::  we've received an invite to a conversation
@@ -199,16 +218,16 @@
       =/  member-add-message=message
         :*  *message-id
             our.bowl
-            signature=[%blob (sign:sig our.bowl now.bowl hash)]
+            signature=[%b (sign:sig our.bowl now.bowl hash)]
             now.bowl
             %member-add
             (scot %p src.bowl)
-            ~  ~  ~
+            ~  [%m ~]  ~
         ==
       :_  ~
       %+  ~(poke pass:io /accept-invite)
         [router.convo %pongo]
-      ping+!>(`^ping`[%message cid routed=| member-add-message])
+      ping+!>(`^ping`[%message routed=| cid member-add-message])
     ::
         %reject-invite
       ::  an invite we sent has been rejected
@@ -235,17 +254,14 @@
             last-active=now.bowl
             last-read=0
             router=our.bowl
-            :-  %blob
+            :-  %b
             config.action(members (~(put in members.config.action) our.bowl))
             ~
         ==
       ::  add this conversation to our table
       ::  and create a messages table for it
       =.  db.state
-        %+  insert:db.state
-          %conversations
-        ::  TODO fix this, no good
-        ~[!<(row:nectar [-:!>(*row:nectar) convo])]
+        (insert-rows:db.state %conversations ~[convo])
       =.  db.state
         %+  add-table:db.state
           messages-table-id.convo
@@ -282,12 +298,12 @@
       =/  =message
         :*  id=0  ::  router will make this
             author=our.bowl
-            signature=[%blob (sign:sig our.bowl now.bowl hash)]
+            signature=[%b (sign:sig our.bowl now.bowl hash)]
             timestamp=now.bowl  ::  needed for verification
             message-kind.action
             content.action
             reference.action
-            ~  ~
+            [%m ~]  ~
         ==
       =/  convo=conversation
         ::  TODO clean this up
@@ -300,11 +316,28 @@
       :_  ~
       %+  ~(poke pass:io /send-message)
         [router.convo %pongo]
-      ping+!>(`ping`[%message conversation-id.action routed=| message])
+      ping+!>(`ping`[%message routed=| conversation-id.action message])
     ::
         %send-reaction
       ::  create a reaction and send to a conversation we're in
-      !!
+      =/  convo=conversation
+        ::  TODO clean this up
+        !<  conversation
+        :-  -:!>(*conversation)
+        %-  head
+        %-  q:db.state
+        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
+      =/  =signed-reaction
+        :^    reaction.action
+            our.bowl
+          on.action
+        %^  sign:sig  our.bowl  now.bowl
+        (make-reaction-hash reaction.action on.action)
+      :_  state
+      :_  ~
+      %+  ~(poke pass:io /send-react)
+        [router.convo %pongo]
+      ping+!>(`ping`[%react routed=| conversation-id.action signed-reaction])
     ::
         %read-message
       ::  if read id is newer than current saved read id, replace in convo
@@ -318,12 +351,9 @@
       ?.  (gth message-id.action last-read.convo)
         `state
       =-  `state(db -)
-      %+  insert:db.state
+      %+  insert-rows:db.state
         %conversations
-      ::  TODO fix this, no good
-      :_  ~
-      !<  row:nectar
-      [-:!>(*row:nectar) convo(last-read message-id.action)]
+      ~[convo(last-read message-id.action)]
     ::
         %make-invite
       ::  create an invite and send to someone
@@ -351,12 +381,9 @@
       =.  members.p.meta.convo
         (~(put in members.p.meta.convo) our.bowl)
       =.  db.state
-        %+  insert:db.state
+        %+  insert-rows:db.state
           %conversations
-        ::  TODO fix this, no good
-        :_  ~
-        !<  row:nectar
-        [-:!>(*row:nectar) convo(last-active now.bowl, last-read 0)]
+        ~[convo(last-active now.bowl, last-read 0)]
       =.  db.state
         %+  add-table:db.state
           messages-table-id.convo
@@ -407,13 +434,14 @@
     ::  -  get single message with id X in conversation Y
     ::
         [%x %all-conversations ~]
-      =-  ``noun+!>(-)
+      ::  =-  ``noun+!>(-)
+      ~&  >
       %+  turn
         %-  q:db.state
         [%select %conversations where=[%n ~]]
       |=  =row:nectar
       !<(conversation [-:!>(*conversation) row])
-
+      ``noun+!>(~)
     ::
         [%x %all-messages @ ~]
       =/  convo-id  (slav %ux i.t.t.path)
@@ -424,11 +452,13 @@
         %-  head
         %-  q:db.state
         [%select %conversations where=[%s %id %& %eq convo-id]]
-      =-  ``noun+!>(-)
+      ::  =-  ``noun+!>(-)
+      ~&  >
       %+  turn
         %-  q:db.state
         [%select messages-table-id.convo where=[%n ~]]
       |=  =row:nectar
       !<(message [-:!>(*message) row])
+      ``noun+!>(~)
     ==
 --

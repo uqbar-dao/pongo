@@ -10,7 +10,7 @@
       [%kind [4 | %tas]]
       [%content [5 | %t]]
       [%reference [6 & %ud]]  ::  for replies
-      [%reactions [7 | %list]]
+      [%reactions [7 | %map]]
       ::  experiment: can we add mentions *later*?
   ==
 ::
@@ -31,12 +31,12 @@
 +$  message
   $:  id=message-id
       author=@p
-      signature=[%blob p=[p=@ux q=ship r=life]]
+      signature=[%b p=[p=@ux q=ship r=life]]
       timestamp=@da
       kind=message-kind
       content=@t
       reference=(unit message-id)
-      reactions=(list (pair @p reaction))
+      reactions=[%m (map @p reaction)]
       ~
   ==
 ::
@@ -66,6 +66,12 @@
   $?  %love       %hate
       %like       %dislike
       %emphasize  %question
+  ==
++$  signed-reaction
+  $:  =reaction
+      author=@p
+      on=message-id
+      signature=[p=@ux q=ship r=life]
   ==
 ::
 ::  a conversation is a groupchat of 2-100 ships.
@@ -109,7 +115,7 @@
       last-active=@da
       last-read=message-id
       router=@p
-      meta=[%blob p=conversation-metadata]
+      meta=[%b p=conversation-metadata]
       ~
   ==
 ::
@@ -118,8 +124,8 @@
 ::
 +$  ping
   $%  ::  these are sent to / received from router
-      [%message =conversation-id routed=? =message]  ::  TODO add ship-sig so router can't spoof
-      [%react =conversation-id on=message-id =reaction]
+      [%message routed=? =conversation-id =message]
+      [%react routed=? =conversation-id =signed-reaction]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept

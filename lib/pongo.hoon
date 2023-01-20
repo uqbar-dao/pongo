@@ -12,6 +12,17 @@
     (scot %da now)
   ==
 ::
+++  make-reaction-hash
+  |=  [=reaction on=message-id]
+  ^-  @
+  %-  sham
+  ;:  (cury cat 3)
+    'signed-pongo-react: '
+    reaction
+    'on message '
+    (scot %ud on)
+  ==
+::
 ++  print-message
   |=  =message
   ^-  @t
