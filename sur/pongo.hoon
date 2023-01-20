@@ -56,6 +56,7 @@
       ::  in these kinds, message content is a `@t`(scot %p @p)
       %member-add     ::  in FFA, anyone can send this, otherwise only leaders
       %member-remove  ::  in FFA, only member leaving can send
+      %change-name
       %leader-add     ::  only for %many-leader
       %leader-remove  ::  only for %many-leader
       %change-router  ::  TBD
@@ -75,9 +76,10 @@
 ++  conversations-schema
   :~  [%id [0 | %ux]]
       [%messages-table-id [[1 | %ux]]]
-      [%last-active [2 | %da]]
-      [%router [3 | %p]]
-      [%members [4 | %blob]]
+      [%name [2 | %t]]
+      [%last-active [3 | %da]]
+      [%router [4 | %p]]
+      [%members [5 | %blob]]
   ==
 ::
 ++  conversations-indices
@@ -104,6 +106,7 @@
 +$  conversation
   $:  id=conversation-id
       messages-table-id=@ux
+      name=@t
       last-active=@da
       router=@p
       meta=[%blob p=conversation-metadata]
@@ -126,7 +129,7 @@
 ::  pokes that our frontend performs:
 ::
 +$  action
-  $%  [%make-conversation config=conversation-metadata]
+  $%  [%make-conversation name=@t config=conversation-metadata]
       [%leave-conversation =conversation-id]
       ::
       [%send-message =conversation-id =message-kind content=@t reference=(unit message-id)]
