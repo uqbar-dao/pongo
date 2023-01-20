@@ -7,11 +7,10 @@
       [%author [1 | %p]]
       [%signature [2 | %blob]]
       [%timestamp [3 | %da]]
-      [%seen [4 | %f]]
-      [%kind [5 | %tas]]
-      [%content [6 | %t]]
-      [%reference [7 & %ud]]  ::  for replies
-      [%reactions [8 | %list]]
+      [%kind [4 | %tas]]
+      [%content [5 | %t]]
+      [%reference [6 & %ud]]  ::  for replies
+      [%reactions [7 | %list]]
       ::  experiment: can we add mentions *later*?
   ==
 ::
@@ -34,7 +33,6 @@
       author=@p
       signature=[%blob p=[p=@ux q=ship r=life]]
       timestamp=@da
-      seen=?
       kind=message-kind
       content=@t
       reference=(unit message-id)
@@ -78,8 +76,9 @@
       [%messages-table-id [[1 | %ux]]]
       [%name [2 | %t]]
       [%last-active [3 | %da]]
-      [%router [4 | %p]]
-      [%members [5 | %blob]]
+      [%last-read [4 | %ud]]  ::  id of message we last saw
+      [%router [5 | %p]]
+      [%members [6 | %blob]]
   ==
 ::
 ++  conversations-indices
@@ -108,6 +107,7 @@
       messages-table-id=@ux
       name=@t
       last-active=@da
+      last-read=message-id
       router=@p
       meta=[%blob p=conversation-metadata]
       ~
@@ -134,6 +134,8 @@
       ::
       [%send-message =conversation-id =message-kind content=@t reference=(unit message-id)]
       [%send-reaction =conversation-id on=message-id =reaction]
+      ::  frontend telling us we've seen up to message-id in convo
+      [%read-message =conversation-id =message-id]
       ::
       [%make-invite to=@p =conversation-id]
       [%accept-invite =conversation-id]

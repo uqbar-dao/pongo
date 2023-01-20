@@ -1,5 +1,4 @@
 :-  %say
-|=  [[now=@da eny=@uvJ bek=beak] [tex=@t ~] ~]
-::  sends to most recent active conversation
+|=  [[now=@da eny=@uvJ bek=beak] [id=@ux tex=@t ~] ~]
 :-  %action
-[%send-message name [%free-for-all (silt members)]]
+[%send-message id %text tex ~]

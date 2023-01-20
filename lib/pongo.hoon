@@ -15,10 +15,37 @@
 ++  print-message
   |=  =message
   ^-  @t
-  ;:  (cury cat 3)
-    'Message from '
-    (scot %p author.message)
-    ': '
-    content.message
+  ?+    kind.message
+      ;:  (cury cat 3)
+        'Message from '
+        (scot %p author.message)
+        ': '
+        content.message
+      ==
+  ::
+      %member-add
+    %^  cat  3
+      content.message
+    ' joined the conversation.'
+  ::
+      %member-remove
+    %^  cat  3
+      content.message
+    ' left the conversation.'
+  ::
+      %change-name
+    %^  cat  3
+      'Conversation name changed to '
+    (cat 3 content.message '.')
+  ::
+      %leader-add
+    %^  cat  3
+      content.message
+    ' is now managing the conversation.'
+  ::
+      %leader-remove
+    %^  cat  3
+      content.message
+    ' is no longer managing the conversation.'
   ==
 --

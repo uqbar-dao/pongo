@@ -120,10 +120,8 @@
         ~&  >>>  "%pongo: rejecting message"  `state
       ?.  (~(has by tables:db.state) messages-table-id.convo)
         ~&  >>>  "%pongo: rejecting message"  `state
-      =:  timestamp.message  now.bowl
-          seen.message       %.n
-      ==
-      ~?  &(?=(%text kind.message) !=(author.message our.bowl))
+      =.  timestamp.message  now.bowl
+      ~?  |(?=(%member-add kind.message) !=(author.message our.bowl))
         (print-message message)
       ::  if the message kind is a member or leader set edit,
       ::  we update our conversation to reflect it -- only
@@ -186,9 +184,10 @@
       ?:  (~(has in blocked.state) src.bowl)
         ::  ignore invites from blocked ships
         `state
+      ~&  >>  "%pongo: {<src.bowl>} invited us to conversation {<cid>}"
       =-  `state(invites -)
       %+  ~(put by invites.state)
-        id.conversation.ping
+        cid
       [src.bowl conversation.ping]
     ::
         %accept-invite
@@ -202,7 +201,6 @@
             our.bowl
             signature=[%blob (sign:sig our.bowl now.bowl hash)]
             now.bowl
-            %.n
             %member-add
             (scot %p src.bowl)
             ~  ~  ~
@@ -214,6 +212,7 @@
     ::
         %reject-invite
       ::  an invite we sent has been rejected
+      ~&  >>  "%pongo: {<src.bowl>} rejected invite to conversation {<cid>}"
       `state(invites-sent (~(del ju invites-sent.state) cid src.bowl))
     ==
   ::
@@ -234,6 +233,7 @@
             messages-table-id=`@ux`(sham (sham (cat 3 our.bowl eny.bowl)))
             name.action
             last-active=now.bowl
+            last-read=0
             router=our.bowl
             :-  %blob
             config.action(members (~(put in members.config.action) our.bowl))
@@ -255,6 +255,7 @@
         ~
       ::  poke all indicated members in metadata with invites
       =/  mems  ~(tap in (~(del in members.config.action) our.bowl))
+      ~&  >>  "%pongo: made conversation id: {<id.convo>} and invited {<mems>}"
       :-  %+  turn  mems
           |=  to=@p
           %+  ~(poke pass:io /send-invite)
@@ -283,7 +284,6 @@
             author=our.bowl
             signature=[%blob (sign:sig our.bowl now.bowl hash)]
             timestamp=now.bowl  ::  needed for verification
-            seen=&
             message-kind.action
             content.action
             reference.action
@@ -305,6 +305,25 @@
         %send-reaction
       ::  create a reaction and send to a conversation we're in
       !!
+    ::
+        %read-message
+      ::  if read id is newer than current saved read id, replace in convo
+      =/  convo=conversation
+        ::  TODO clean this up
+        !<  conversation
+        :-  -:!>(*conversation)
+        %-  head
+        %-  q:db.state
+        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
+      ?.  (gth message-id.action last-read.convo)
+        `state
+      =-  `state(db -)
+      %+  insert:db.state
+        %conversations
+      ::  TODO fix this, no good
+      :_  ~
+      !<  row:nectar
+      [-:!>(*row:nectar) convo(last-read message-id.action)]
     ::
         %make-invite
       ::  create an invite and send to someone
@@ -335,7 +354,9 @@
         %+  insert:db.state
           %conversations
         ::  TODO fix this, no good
-        ~[!<(row:nectar [-:!>(*row:nectar) convo])]
+        :_  ~
+        !<  row:nectar
+        [-:!>(*row:nectar) convo(last-active now.bowl, last-read 0)]
       =.  db.state
         %+  add-table:db.state
           messages-table-id.convo
