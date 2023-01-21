@@ -154,7 +154,7 @@
 ::  update types from scries and subscriptions, used for interacting
 ::
 +$  pongo-update
-  $%  [%all-conversations (list conversation-info)]
+  $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
   ==
 ::

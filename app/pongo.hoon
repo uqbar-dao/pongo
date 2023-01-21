@@ -439,7 +439,7 @@
         [%x %all-conversations ~]
       ~&  >  "pongo: fetching all conversations"
       ~>  %bout
-      =-  ``pongo-update+!>([%all-conversations -])
+      =-  ``pongo-update+!>([%conversations -])
       ^-  (list conversation-info)
       %+  turn
         %-  q:db.state

@@ -70,7 +70,7 @@
     :~  [%id s+(scot %ud id.m)]
         [%author s+(scot %p author.m)]
         ::  don't share signatures
-        [%timestamp s+(scot %da timestamp.m)]
+        [%timestamp (sect timestamp.m)]
         [%kind s+(scot %tas kind.m)]
         [%content s+content.m]
         [%reference ?~(reference.m ~ s+(scot %ud u.reference.m))]

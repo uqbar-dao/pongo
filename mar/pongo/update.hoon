@@ -13,7 +13,7 @@
   ++  noun  upd
   ++  json
     ?-    -.upd
-        %all-conversations
+        %conversations
       %-  pairs
       %+  turn  +.upd
       |=  ci=conversation-info
@@ -21,7 +21,8 @@
       %-  pairs
       :~  [%name s+name.ci]
           [%unreads (numb unreads.ci)]
-          :-  %last-message
+          [%'last_read' (numb last-read.ci)]
+          :-  %'last_message'
           ?~(last-message.ci ~ (message-to-json:parsing u.last-message.ci))
       ==
     ::
