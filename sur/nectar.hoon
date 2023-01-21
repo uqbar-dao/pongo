@@ -94,7 +94,9 @@
   $%  [%select table=?(@ query) where=condition]
       [%project table=?(@ query) cols=(list term)]
       [%theta-join table=?(@ query) with=?(@ query) where=condition]
-      [%update table=@ where=condition col=term func=$-(value value)]
+      [%update table=@ where=condition cols=(list [=term func=mod-func])]
       [%table table=@ ~]  ::  to avoid type-loop
   ==
+::
++$  mod-func  $-(value value)
 --

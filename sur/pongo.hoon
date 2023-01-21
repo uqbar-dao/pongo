@@ -9,8 +9,9 @@
       [%timestamp [3 | %da]]
       [%kind [4 | %tas]]
       [%content [5 | %t]]
-      [%reference [6 & %ud]]  ::  for replies
-      [%reactions [7 | %map]]
+      [%edited [6 | %f]]
+      [%reference [7 & %ud]]  ::  for replies
+      [%reactions [8 | %map]]
       ::  experiment: can we add mentions *later*?
   ==
 ::
@@ -35,6 +36,7 @@
       timestamp=@da
       kind=message-kind
       content=@t
+      edited=?
       reference=(unit message-id)
       reactions=[%m p=(map @p reaction)]
       ~
@@ -60,19 +62,9 @@
       %change-router  ::  TBD
   ==
 ::
-::  these are the only reactions you're allowed to have to something
+::  emojees
 ::
-+$  reaction
-  $?  %love       %hate
-      %like       %dislike
-      %emphasize  %question
-  ==
-+$  signed-reaction
-  $:  =reaction
-      author=@p
-      on=message-id
-      signature=[p=@ux q=ship r=life]
-  ==
++$  reaction  @t
 ::
 ::  a conversation is a groupchat of 2-100 ships.
 ::  schema: we keep a table of all our conversations
@@ -125,7 +117,8 @@
 +$  ping
   $%  ::  these are sent to / received from router
       [%message routed=? =conversation-id =message]
-      [%react routed=? =conversation-id =signed-reaction]
+      [%edit =conversation-id on=message-id edit=@t]
+      [%react =conversation-id on=message-id =reaction]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept
@@ -139,6 +132,7 @@
       [%leave-conversation =conversation-id]
       ::
       [%send-message =conversation-id =message-kind content=@t reference=(unit message-id)]
+      [%send-message-edit =conversation-id on=message-id edit=@t]
       [%send-reaction =conversation-id on=message-id =reaction]
       ::  frontend telling us we've seen up to message-id in convo
       [%read-message =conversation-id =message-id]

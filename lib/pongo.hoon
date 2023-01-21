@@ -28,7 +28,9 @@
   ^-  @t
   ?+    kind.message
       ;:  (cury cat 3)
-        'Message from '
+        'Message ('
+        (scot %ud id.message)
+        ') from '
         (scot %p author.message)
         ': '
         content.message
@@ -60,6 +62,20 @@
     ' is no longer managing the conversation.'
   ==
 ::
+++  print-reaction
+  |=  [src=ship =ping]
+  ^-  @t
+  ?>  ?=(%react -.ping)
+  %-  crip
+  "{<src>} reacted {<reaction.ping>} to message {<on.ping>}"
+::
+++  print-edit
+  |=  [src=ship =ping]
+  ^-  @t
+  ?>  ?=(%edit -.ping)
+  %-  crip
+  "{<src>} edited message {<on.ping>} to {<edit.ping>}"
+::
 ++  parsing
   =,  enjs:format
   |%
@@ -73,6 +89,7 @@
         [%timestamp (sect timestamp.m)]
         [%kind s+(scot %tas kind.m)]
         [%content s+content.m]
+        [%edited b+edited.m]
         [%reference ?~(reference.m ~ s+(scot %ud u.reference.m))]
         :-  %reactions
         %-  pairs

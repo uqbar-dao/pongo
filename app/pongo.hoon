@@ -70,15 +70,14 @@
       ?-  -.ping
         %invite   id.conversation.ping
         %message  conversation-id.ping
-        %react    conversation-id.ping
+        ?(%edit %react)  conversation-id.ping
         ?(%accept-invite %reject-invite)  conversation-id.ping
       ==
     =/  convo=conversation
       ?:  ?=(%invite -.ping)
         conversation.ping
-      ?~  quer=(q:db.state [%select %conversations where=[%s %id %& %eq cid]])
-        ~|("%pongo: couldn't find conversation" !!)
-      !<(conversation [-:!>(*conversation) (head quer)])
+      ~|  "%pongo: couldn't find conversation"
+      (need (fetch-conversation cid))
     ?-    -.ping
         %message
       ::  we've received a new message
@@ -121,7 +120,7 @@
       ?.  (~(has by tables:db.state) messages-table-id.convo)
         ~&  >>>  "%pongo: rejecting message"  `state
       =.  timestamp.message  now.bowl
-      ~?  |(?=(%member-add kind.message) !=(author.message our.bowl))
+      ~?  |(!=(our.bowl author.message) ?=(?(%member-add %change-name) kind.message))
         (print-message message)
       ::  if the message kind is a member or leader set edit,
       ::  we update our conversation to reflect it -- only
@@ -171,31 +170,61 @@
         (insert-rows:db.state messages-table-id.convo ~[message])
       `state
     ::
-        %react
-      ::  we've received a new message reaction
-      ::  if we are router, we now poke every member with this react
-      ?:  &(!routed.ping =(our.bowl router.convo))
-        :_  state
-        %+  turn  ~(tap in members.p.meta.convo)
-        |=  to=@p
-        %+  ~(poke pass:io /route-message)
-          [to %pongo]
-        ping+!>(ping(routed &))
-      ?.  =+  (make-reaction-hash [reaction on]:signed-reaction.ping)
-          (validate:sig our.bowl signature.signed-reaction.ping - now.bowl)
-        ~&  >>>  "%pongo: rejecting reaction, invalid signature"  `state
-      ?.  (~(has in members.p.meta.convo) author.signed-reaction.ping)
+        %edit
+      ::  we've received an edit of a message
+      ?.  (~(has in members.p.meta.convo) src.bowl)
         ~&  >>>  "%pongo: rejecting reaction"  `state
       ?.  (~(has by tables:db.state) messages-table-id.convo)
         ~&  >>>  "%pongo: rejecting reaction"  `state
+      ::
+      ::  TODO: implement a waiting feature for edits to message IDs
+      ::  which we haven't received yet!!!
+      ::
+      ~?  !=(our src):bowl
+        (print-edit src.bowl ping)
+      =.  db.state
+        =+  |=  v=value:nectar
+            ^-  value:nectar
+            ?>  ?=(@t v)
+            edit.ping
+        %-  update:db.state
+        :*  %update  messages-table-id.convo
+            :+  %and
+              [%s %id %& %eq on.ping]
+            :+  %and
+              [%s %author %& %eq src.bowl]
+            ::  comically hacky way to enforce that edits can only be done
+            ::  on kinds %text, %image, %link, %code, %reply
+            [%s %kind %& %lte 521.510.348.146]
+            :~  [%content -]
+                [%edited |=(v=value:nectar `value:nectar`%.y)]
+            ==
+        ==
+      `state
+    ::
+        %react
+      ::  we've received a new message reaction
+      ?.  (~(has in members.p.meta.convo) src.bowl)
+        ~&  >>>  "%pongo: rejecting reaction"  `state
+      ?.  (~(has by tables:db.state) messages-table-id.convo)
+        ~&  >>>  "%pongo: rejecting reaction"  `state
+      ::
+      ::  TODO: implement a waiting feature for reacts to message IDs
+      ::  which we haven't received yet!!!
+      ::
+      ~?  !=(our src):bowl
+        (print-reaction src.bowl ping)
       =.  db.state
         =+  |=  v=value:nectar
             ^-  value:nectar
             ?>  ?=(^ v)
             ?>  ?=(%m -.v)
-            [%m (~(put by p.v) [author reaction]:signed-reaction.ping)]
+            [%m (~(put by p.v) src.bowl reaction.ping)]
         %-  update:db.state
-        [%update messages-table-id.convo [%s %id %& %eq on.signed-reaction.ping] %reactions -]
+        :^    %update
+            messages-table-id.convo
+          [%s %id %& %eq on.ping]
+        ~[[%reactions -]]
       `state
     ::
         %invite
@@ -222,7 +251,7 @@
             now.bowl
             %member-add
             (scot %p src.bowl)
-            ~  [%m ~]  ~
+            %.n  ~  [%m ~]  ~
         ==
       :_  ~
       %+  ~(poke pass:io /accept-invite)
@@ -302,73 +331,64 @@
             timestamp=now.bowl  ::  needed for verification
             message-kind.action
             content.action
+            edited=%.n
             reference.action
             [%m ~]  ~
         ==
-      =/  convo=conversation
-        ::  TODO clean this up
-        !<  conversation
-        :-  -:!>(*conversation)
-        %-  head
-        %-  q:db.state
-        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
+      ?~  convo=(fetch-conversation conversation-id.action)
+        ~|("%pongo: couldn't find that conversation id" !!)
       :_  state
       :_  ~
       %+  ~(poke pass:io /send-message)
-        [router.convo %pongo]
+        [router.u.convo %pongo]
       ping+!>(`ping`[%message routed=| conversation-id.action message])
+    ::
+        %send-message-edit
+      ::  edit a message we sent (must be of kind %text/%image/%link/%code)
+      ::  as opposed to *new* messages, which must be sequenced by router,
+      ::  we can poke edits out directly to all members
+      ?~  convo=(fetch-conversation conversation-id.action)
+        ~|("%pongo: couldn't find that conversation id" !!)
+      :_  state
+      %+  turn  ~(tap in members.p.meta.u.convo)
+      |=  to=@p
+      %+  ~(poke pass:io /send-edit)
+        [to %pongo]
+      ping+!>(`ping`[%edit [conversation-id on edit]:action])
     ::
         %send-reaction
       ::  create a reaction and send to a conversation we're in
-      =/  convo=conversation
-        ::  TODO clean this up
-        !<  conversation
-        :-  -:!>(*conversation)
-        %-  head
-        %-  q:db.state
-        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
-      =/  =signed-reaction
-        :^    reaction.action
-            our.bowl
-          on.action
-        %^  sign:sig  our.bowl  now.bowl
-        (make-reaction-hash reaction.action on.action)
+      ::  as opposed to messages, which must be sequenced by router,
+      ::  we can poke reactions out directly to all members
+      ?~  convo=(fetch-conversation conversation-id.action)
+        ~|("%pongo: couldn't find that conversation id" !!)
       :_  state
-      :_  ~
+      %+  turn  ~(tap in members.p.meta.u.convo)
+      |=  to=@p
       %+  ~(poke pass:io /send-react)
-        [router.convo %pongo]
-      ping+!>(`ping`[%react routed=| conversation-id.action signed-reaction])
+        [to %pongo]
+      ping+!>(`ping`[%react [conversation-id on reaction]:action])
     ::
         %read-message
       ::  if read id is newer than current saved read id, replace in convo
-      =/  convo=conversation
-        ::  TODO clean this up
-        !<  conversation
-        :-  -:!>(*conversation)
-        %-  head
-        %-  q:db.state
-        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
-      ?.  (gth message-id.action last-read.convo)
+      ?~  convo=(fetch-conversation conversation-id.action)
+        ~|("%pongo: couldn't find that conversation id" !!)
+      ?.  (gth message-id.action last-read.u.convo)
         `state
       =-  `state(db -)
       %+  insert-rows:db.state
         %conversations
-      ~[convo(last-read message-id.action)]
+      ~[u.convo(last-read message-id.action)]
     ::
         %make-invite
       ::  create an invite and send to someone
-      =/  convo=conversation
-        ::  TODO clean this up
-        !<  conversation
-        :-  -:!>(*conversation)
-        %-  head
-        %-  q:db.state
-        [%select %conversations where=[%s %id %& %eq conversation-id.action]]
-      :_  state(invites-sent (~(put ju invites-sent.state) id.convo to.action))
+      ?~  convo=(fetch-conversation conversation-id.action)
+        ~|("%pongo: couldn't find that conversation id" !!)
+      :_  state(invites-sent (~(put ju invites-sent.state) id.u.convo to.action))
       :_  ~
       %+  ~(poke pass:io /send-invite)
         [to.action %pongo]
-      ping+!>(`ping`[%invite convo])
+      ping+!>(`ping`[%invite u.convo])
     ::
         %accept-invite
       ::  accept an invite we've been sent, join the conversation
@@ -465,17 +485,18 @@
       =-  ``pongo-update+!>([%message-list -])
       ^-  (list message)
       =/  convo-id  (slav %ux i.t.t.path)
-      =/  convo=conversation
-        ::  TODO clean this up
-        !<  conversation
-        :-  -:!>(*conversation)
-        %-  head
-        %-  q:db.state
-        [%select %conversations where=[%s %id %& %eq convo-id]]
+      ?~  convo=(fetch-conversation convo-id)
+        ~
       %+  turn
         %-  q:db.state
-        [%select messages-table-id.convo where=[%n ~]]
+        [%select messages-table-id.u.convo where=[%n ~]]
       |=  =row:nectar
       !<(message [-:!>(*message) row])
     ==
+  ::
+  ++  fetch-conversation
+    |=  id=conversation-id
+    ^-  (unit conversation)
+    =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
+    (q:db.state [%select %conversations where=[%s %id %& %eq id]])
 --

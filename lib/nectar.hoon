@@ -70,7 +70,7 @@
     =/  tab=_tab  (~(got by tables) table.query)
     =-  +>.$(tables -)
     %+  ~(put by tables)  table.query
-    (update:tab primary-key.table:tab where.query col.query func.query)
+    (update:tab primary-key.table:tab where.query cols.query)
   ::
   ++  run-query
     |=  [=query query-cols=(list column-name)]
@@ -577,16 +577,26 @@
   ::  update all rows that meet condition at column with function
   ::
   ++  update
-    |=  [at-key=(list term) where=condition col=term func=$-(value value)]
+    |=  [at-key=(list term) where=condition cols=(list [term $-(value value)])]
     =?    at-key
         ?=(~ at-key)
       primary-key.table
-    =/  col-spot  spot:(~(got by schema.table) col)
+    =/  col-spots=(map @ $-(value value))
+      %-  ~(gas by *(map @ $-(value value)))
+      %+  turn  cols
+      |=  [=term func=$-(value value)]
+      :-  spot:(~(got by schema.table) term)
+      func
     %+  insert
       %+  turn
         `(list row)`(get-rows:(select at-key where) at-key)
       |=  =row
-      (snap row col-spot (func (snag col-spot row)))
+      =<  p
+      %^  spin  row  0
+      |=  [=value i=@]
+      :_  +(i)
+      ?~  c=(~(get by col-spots) i)  value
+      (u.c value)
     update=&
   ::
   ::  produces a list of rows along with a schema for interpreting
