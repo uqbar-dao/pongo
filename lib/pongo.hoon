@@ -59,4 +59,26 @@
       content.message
     ' is no longer managing the conversation.'
   ==
+::
+++  parsing
+  =,  enjs:format
+  |%
+  ++  message-to-json
+    |=  m=message
+    ^-  json
+    %-  pairs
+    :~  [%id s+(scot %ud id.m)]
+        [%author s+(scot %p author.m)]
+        ::  don't share signatures
+        [%timestamp s+(scot %da timestamp.m)]
+        [%kind s+(scot %tas kind.m)]
+        [%content s+content.m]
+        [%reference ?~(reference.m ~ s+(scot %ud u.reference.m))]
+        :-  %reactions
+        %-  pairs
+        %+  turn  ~(tap by p.reactions.m)
+        |=  [p=@p r=reaction]
+        [(scot %p p) s+(scot %tas r)]
+    ==
+  --
 --

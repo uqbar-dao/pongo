@@ -433,17 +433,37 @@
     ::  -  get all mentions between date X and now
     ::  -  get single message with id X in conversation Y
     ::
+    ::
+    ::  get all conversations and get unread count + most recent message
+    ::
         [%x %all-conversations ~]
-      ::  =-  ``noun+!>(-)
-      ~&  >
+      ~&  >  "pongo: fetching all conversations"
+      ~>  %bout
+      =-  ``pongo-update+!>([%all-conversations -])
+      ^-  (list conversation-info)
       %+  turn
         %-  q:db.state
         [%select %conversations where=[%n ~]]
       |=  =row:nectar
-      !<(conversation [-:!>(*conversation) row])
-      ``noun+!>(~)
+      =/  convo=conversation
+        !<(conversation [-:!>(*conversation) row])
+      =/  last-message=(unit message)
+        =-  ?~(- ~ `!<(message [-:!>(*message) (head -)]))
+        %-  q:db.state
+        [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
+      :+  convo
+        last-message
+      ?~  last-message  0
+      (sub id.u.last-message last-read.convo)
+    ::
+    ::  get all messages from a particular conversation
+    ::  warning: could be slow for long conversations!
     ::
         [%x %all-messages @ ~]
+      ~&  >  "pongo: fetching all messages"
+      ~>  %bout
+      =-  ``pongo-update+!>([%message-list -])
+      ^-  (list message)
       =/  convo-id  (slav %ux i.t.t.path)
       =/  convo=conversation
         ::  TODO clean this up
@@ -452,13 +472,10 @@
         %-  head
         %-  q:db.state
         [%select %conversations where=[%s %id %& %eq convo-id]]
-      ::  =-  ``noun+!>(-)
-      ~&  >
       %+  turn
         %-  q:db.state
         [%select messages-table-id.convo where=[%n ~]]
       |=  =row:nectar
       !<(message [-:!>(*message) row])
-      ``noun+!>(~)
     ==
 --

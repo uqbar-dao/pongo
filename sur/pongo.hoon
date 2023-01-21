@@ -36,7 +36,7 @@
       kind=message-kind
       content=@t
       reference=(unit message-id)
-      reactions=[%m (map @p reaction)]
+      reactions=[%m p=(map @p reaction)]
       ~
   ==
 ::
@@ -151,6 +151,16 @@
       [%unblock who=@p]
   ==
 ::
-::  TODO: update type that our FE subscription gets
+::  update types from scries and subscriptions, used for interacting
 ::
++$  pongo-update
+  $%  [%all-conversations (list conversation-info)]
+      [%message-list (list message)]
+  ==
+::
++$  conversation-info
+  $:  conversation
+      last-message=(unit message)
+      unreads=@ud
+  ==
 --
