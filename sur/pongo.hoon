@@ -3,10 +3,10 @@
 ::  schema: a table handles one conversation
 ::
 ++  messages-schema
-  :~  [%id [0 | %ud]]
+  :~  [%id [0 | %ud]]  ::  ordering produced by message router
       [%author [1 | %p]]
-      [%signature [2 | %blob]]
-      [%timestamp [3 | %da]]
+      [%signature [2 | %blob]]  ::  we probably don't care about storing these
+      [%timestamp [3 | %da]]  ::  time *we* received message at
       [%kind [4 | %tas]]
       [%content [5 | %t]]
       [%edited [6 | %f]]
@@ -61,6 +61,7 @@
       %leader-remove  ::  only for %many-leader
       %change-router  ::  TBD
   ==
+++  my-special-number  521.510.348.146
 ::
 ::  emojees
 ::
@@ -119,6 +120,8 @@
       [%message routed=? =conversation-id =message]
       [%edit =conversation-id on=message-id edit=@t]
       [%react =conversation-id on=message-id =reaction]
+      ::  these are only sent when conversation size is below cutoff
+      [%delivered hash=@uvH]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept

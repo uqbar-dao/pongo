@@ -2,14 +2,16 @@
 /+  sig
 |%
 ++  make-message-hash
-  |=  [content=@t now=@da]
+  |=  [content=@t src=@p now=@da]
   ^-  @
   %-  sham
   ;:  (cury cat 3)
-    'signed-pongo-message: '
-    content
+    'signed pongo message by '
+    (scot %p src)
     ' at '
     (scot %da now)
+    ': '
+    content
   ==
 ::
 ++  make-reaction-hash
