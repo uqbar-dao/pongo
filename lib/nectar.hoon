@@ -27,8 +27,27 @@
       --
   =|  =tables
   |%
+  ::
+  ::  run a query. if it's a non-mutating query you will get a list of rows.
+  ::  this is the only external arm you should use?
+  ::
+  ++  q
+    |=  =query
+    ^-  (quip row _database)
+    ?+  -.query
+      [(get-rows:- +):(run-query query ~) +>.$]
+    ::
+      %update  `(update query)
+      %insert  `(insert-rows table.query rows.query)
+      %delete  `(delete table.query where.query)
+      %add-table  `(add-table name.query actual.query)
+      %rename-table  `(rename-table old.query new.query)
+      %drop-table  `(drop-table name.query)
+    ==
+  ::
   ++  add-table
     |=  [name=table-name =table]
+    ^+  database
     ?:  (~(has by tables) name)
       ~|("nectar: table with that id already exists" !!)
     =+  (~(create tab table) ~)
@@ -36,71 +55,96 @@
   ::
   ++  insert-rows
     |=  [name=table-name rows=(list *)]
+    ^+  database
     =/  tab  (~(got by tables) name)
     =-  (add-tab name (insert:tab - update=%.n))
     `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
   ++  update-rows
     |=  [name=table-name rows=(list *)]
+    ^+  database
     =/  tab  (~(got by tables) name)
     =-  (add-tab name (insert:tab - update=%.y))
     `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
   ++  delete
     |=  [name=table-name where=condition]
+    ^+  database
     =/  tab  (~(got by tables) name)
     =/  query-key  primary-key.table:tab
     (add-tab name (delete:tab query-key where))
   ::
-  ++  rename
-    !!  ::  TODO add to +tab
+  ++  rename-table
+    |=  [old=table-name new=table-name]
+    ^+  database
+    +>.$(tables (~(put by (~(del by tables) old)) new (~(got by tables) old)))
+  ::
+  ++  drop-table
+    |=  name=table-name
+    ^+  database
+    +>.$(tables (~(del by tables) name))
   ::
   ++  add-tab
     |=  [name=table-name tab=_tab]
+    ^+  database
     +>.$(tables (~(put by tables) name tab))
-  ::
-  ++  q
-    |=  =query  ::  why can't i make this a wet gate?
-    ^-  (list row)
-    (get-rows:- +):(run-query query ~)
   ::
   ++  update
     |=  =query
+    ^+  database
     ?>  ?=(%update -.query)
     =/  tab=_tab  (~(got by tables) table.query)
     =-  +>.$(tables -)
     %+  ~(put by tables)  table.query
     (update:tab primary-key.table:tab where.query cols.query)
   ::
+  ::  run a NON-MUTATING query and get a list of rows as a result
+  ::
   ++  run-query
     |=  [=query query-cols=(list column-name)]
     ^-  [_tab (list column-name)]
-    ::  here we make smart choices
+    ?>  ?=(?(%select %project %theta-join) -.query)
     =/  [left-tab=_tab query-cols=(list column-name)]
       ?@  table.query
         [(~(got by tables) table.query) query-cols]
       $(query table.query)
-    ?+    -.query  ~|("unsupported query!" !!)
+    ::  here we make smart choices
+    ::  we can inspect the query to see what index might be the most useful
+    ::  the simplest example is a select statement where want all rows with
+    ::  column X equal to a number Y. this is an O(n) process naively, but
+    ::  if we store an index for column X, becomes O(log(n)).
+    =/  index=(list column-name)
+      ?-    -.query
+          %project
+        ::  a projection must always iterate through all rows, so no
+        ::  optimization is possible?
+        ~
+      ::
+          ::  ?(%select %theta-join)
+          ::  the fact that this doesn't work SUCKS ASS
+          %select
+        (choose-key table:left-tab where.query)
+          %theta-join
+        (choose-key table:left-tab where.query)
+      ==
+    ?-    -.query
         %select
-      =?    query-cols
-          ?=(~ query-cols)
-        ::  not smart yet..
+      =?    index
+          ?=(~ index)
         primary-key.table:left-tab
-      :-  (select:left-tab query-cols where.query)
-      query-cols
+      :-  (select:left-tab index where.query)
+      index
     ::
         %project
-      =?    query-cols
-          ?=(~ query-cols)
-        ::  not smart yet..
+      =?    index
+          ?=(~ index)
         primary-key.table:left-tab
-      :-  (project:left-tab query-cols cols.query)
-      query-cols
+      :-  (project:left-tab index cols.query)
+      index
     ::
         %theta-join
-      =?    query-cols
-          ?=(~ query-cols)
-        ::  not smart yet..
+      =?    index
+          ?=(~ index)
         primary-key.table:left-tab
       =/  right-tab=_tab
         ?@  with.query
@@ -117,9 +161,33 @@
             |=(name=term (cat 3 'r-' name))
             %.y  ~  %.n  %.n  ::  important
         ==
-      =.  left-tab  (cross:left-tab query-cols new-key with)
+      =.  left-tab  (cross:left-tab index new-key with)
       :-  (select:left-tab cols.new-key where.query)
       cols.new-key
+    ==
+  ::
+  ++  choose-key
+    |=  [=table =condition]
+    ?-    -.condition
+        %n  ~
+    ::
+        %s
+      ?:  (~(has by indices.table) ~[c.condition])
+        ~[c.condition]
+      ~
+    ::
+        %d
+      ?:  (~(has by indices.table) ~[c1.condition])
+        ~[c1.condition]
+      ?:  (~(has by indices.table) ~[c2.condition])
+        ~[c2.condition]
+      ~
+    ::
+        ?(%and %or)
+      =/  try-a=(list column-name)
+        $(condition a.condition)
+      ?^  try-a  try-a
+      $(condition b.condition)
     ==
   --
 ::
@@ -424,7 +492,7 @@
       =/  skimmed=(list [=key =row])
         %+  skim  listed
         |=  [=key =row]
-        %^  apply-comparator  c.where
+        %^  apply-comparator  com.where
         (snag spot.c1 row)  (snag spot.c2 row)
       (list-to-record at-key skimmed)
     ::
@@ -702,7 +770,7 @@
     (snag spot:(~(got by schema) c.cond) row)
   ::
       %d
-    =-  (apply-comparator c.cond -)
+    =-  (apply-comparator com.cond -)
     :-  (snag spot:(~(got by schema) c1.cond) row)
     (snag spot:(~(got by schema) c2.cond) row)
   ::

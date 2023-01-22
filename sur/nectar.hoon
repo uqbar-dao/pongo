@@ -66,7 +66,7 @@
   $~  [%n ~]
   $%  [%n ~]
       [%s c=term s=selector]
-      [%d c1=term c=comparator c2=term]
+      [%d c1=term c2=term com=comparator]
       [%and a=condition b=condition]
       [%or a=condition b=condition]
   ==
@@ -95,7 +95,15 @@
       [%project table=?(@ query) cols=(list term)]
       [%theta-join table=?(@ query) with=?(@ query) where=condition]
       [%update table=@ where=condition cols=(list [=term func=mod-func])]
-      [%table table=@ ~]  ::  to avoid type-loop
+      [%insert table=@ rows=(list *)]
+      [%delete table=@ where=condition]
+      [%add-table name=@ actual=table]
+      [%rename-table old=@ new=@]
+      [%drop-table name=@]
+      ::  %add-column
+      ::  %drop-column
+      ::  %edit-column
+      ::  ??
   ==
 ::
 +$  mod-func  $-(value value)

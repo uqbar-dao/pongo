@@ -110,6 +110,7 @@
       ::  assign ordering to message here
       =.  id.message
         =/  res
+          =<  -
           %-  q:db.state
           [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
         ?~  res  0
@@ -221,7 +222,8 @@
           ^-  value:nectar
           ?>  ?=(@t v)
           edit.ping
-      %-  update:db.state
+      =<  +
+      %-  q:db.state
       :*  %update  messages-table-id.convo
           :+  %and
             [%s %id %& %eq on.ping]
@@ -255,7 +257,8 @@
           ?>  ?=(^ v)
           ?>  ?=(%m -.v)
           [%m (~(put by p.v) src.bowl reaction.ping)]
-      %-  update:db.state
+      =<  +
+      %-  q:db.state
       :^    %update
           messages-table-id.convo
         [%s %id %& %eq on.ping]
@@ -501,15 +504,13 @@
     =-  ``pongo-update+!>([%conversations -])
     ^-  (list conversation-info)
     %+  turn
-      %-  q:db.state
-      [%select %conversations where=[%n ~]]
+     -:(q:db.state [%select %conversations where=[%n ~]])
     |=  =row:nectar
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])
     =/  last-message=(unit message)
-      =-  ?~(- ~ `!<(message [-:!>(*message) (head -)]))
-      %-  q:db.state
-      [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
+      =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
+      (q:db.state [%select messages-table-id.convo where=[%s %id %& %bottom 1]])
     :+  convo
       last-message
     ?~  last-message  0
@@ -527,8 +528,7 @@
     ?~  convo=(fetch-conversation convo-id)
       ~
     %+  turn
-      %-  q:db.state
-      [%select messages-table-id.u.convo where=[%n ~]]
+      -:(q:db.state [%select messages-table-id.u.convo where=[%n ~]])
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ==
@@ -537,7 +537,7 @@
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  (q:db.state [%select %conversations where=[%s %id %& %eq id]])
+  -:(q:db.state [%select %conversations where=[%s %id %& %eq id]])
 ::
 ++  delivered-card
   |=  [author=@p hash=@uvH]
@@ -550,6 +550,6 @@
   |=  upd=pongo-update
   ^-  card
   ~&  >>  "giving fact to frontend: "
-  ~&  >>  upd
+  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
 --
