@@ -85,19 +85,40 @@
     |=  m=message
     ^-  json
     %-  pairs
-    :~  [%id s+(scot %ud id.m)]
-        [%author s+(scot %p author.m)]
+    :~  ['id' s+(scot %ud id.m)]
+        ['author' s+(scot %p author.m)]
         ::  don't share signatures
-        [%timestamp (sect timestamp.m)]
-        [%kind s+(scot %tas kind.m)]
-        [%content s+content.m]
-        [%edited b+edited.m]
-        [%reference ?~(reference.m ~ s+(scot %ud u.reference.m))]
-        :-  %reactions
+        ['timestamp' (sect timestamp.m)]
+        ['kind' s+(scot %tas kind.m)]
+        ['content' s+content.m]
+        ['edited' b+edited.m]
+        ['reference' ?~(reference.m ~ s+(scot %ud u.reference.m))]
+        :-  'reactions'
         %-  pairs
         %+  turn  ~(tap by p.reactions.m)
         |=  [p=@p r=reaction]
         [(scot %p p) s+(scot %tas r)]
+    ==
+  ::
+  ++  conversation-to-json
+    |=  c=conversation
+    ^-  json
+    %-  pairs
+    :~  ['id' s+(scot %ux id.c)]
+        ::  don't share messages table id
+        ['name' s+name.c]
+        ['last_active' (sect last-active.c)]
+        ['last_read' s+(scot %ud last-read.c)]
+        ::  don't share router node
+        ['members' a+(turn ~(tap in members.p.meta.c) ship)]
+        :-  'leaders'
+        ?-    -.p.meta.c
+            %free-for-all   ~
+            %single-leader  (ship leader.p.meta.c)
+            %many-leader
+          :-  %a
+          (turn ~(tap in leaders.p.meta.c) ship)
+        ==
     ==
   --
 --

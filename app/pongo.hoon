@@ -13,7 +13,7 @@
       blocked=(set @p)
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
-      undelivered=(map @uvH [=message want=(set @p)])  ::  keyed by hash
+      undelivered=(map @uvH [message want=(set @p)])  ::  keyed by hash
   ==
 +$  card  card:agent:gall
 --
@@ -58,8 +58,18 @@
     ::
     ++  on-peek   handle-scry:hc
     ::
+    ++  on-watch
+      |=  =path
+      ^-  (quip card _this)
+      ::  one path, updates, for frontend to connect to and receive
+      ::  all actively-flowing information. does not provide anything
+      ::  upon watch, only as it happens.
+      ?>  =(src.bowl our.bowl)
+      ?.  ?=([%updates ~] path)
+        ~|("watch to erroneous path" !!)
+      `this
+    ::
     ++  on-agent  on-agent:def
-    ++  on-watch  on-watch:def
     ++  on-arvo   on-arvo:def
     ++  on-leave  on-leave:def
     ++  on-fail   on-fail:def
@@ -75,7 +85,8 @@
     =.  want.u.has  (~(del in want.u.has) src.bowl)
     ?~  want.u.has
       ~&  "message delivered."
-      `state(undelivered (~(del by undelivered.state) hash.ping))
+      :-  (give-update [%delivered timestamp.u.has])^~
+      state(undelivered (~(del by undelivered.state) hash.ping))
     `state(undelivered (~(put by undelivered.state) hash.ping u.has))
   =/  cid=conversation-id
     ::  IRRITATING type refinement here
@@ -186,9 +197,12 @@
     =.  db.state
       (insert-rows:db.state messages-table-id.convo ~[message])
     ?.  (lte kind.message my-special-number)
-      `state
+      :_  state
+      (give-update [%message id.convo message])^~
     :_  state
-    (delivered-card author.message message-hash)^~
+    :~  (delivered-card author.message message-hash)
+        (give-update [%message id.convo message])
+    ==
   ::
       %edit
     ::  we've received an edit of a message
@@ -254,7 +268,8 @@
       ::  ignore invites from blocked ships
       `state
     ~&  >>  "%pongo: {<src.bowl>} invited us to conversation {<cid>}"
-    =-  `state(invites -)
+    :-  (give-update [%invite conversation.ping])^~
+    =-  state(invites -)
     %+  ~(put by invites.state)
       cid
     [src.bowl conversation.ping]
@@ -362,8 +377,7 @@
           state
         =-  state(undelivered (~(put by undelivered.state) hash -))
         [message (~(del in members.p.meta.u.convo) our.bowl)]
-    ::  only poke the router
-    :_  ~
+    :_  (give-update [%sending now.bowl])^~
     %+  ~(poke pass:io /send-message)
       [router.u.convo %pongo]
     ping+!>(`ping`[%message routed=| conversation-id.action message])
@@ -531,4 +545,11 @@
   %+  ~(poke pass:io /delivered)
     [author %pongo]
   ping+!>(`ping`[%delivered hash])
+::
+++  give-update
+  |=  upd=pongo-update
+  ^-  card
+  ~&  >>  "giving fact to frontend: "
+  ~&  >>  upd
+  (fact:io pongo-update+!>(upd) ~[/updates])
 --

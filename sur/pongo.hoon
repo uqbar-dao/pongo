@@ -153,6 +153,10 @@
 +$  pongo-update
   $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
+      [%message =conversation-id =message]  ::  tell frontend about new message
+      [%invite conversation]               ::                      new invite
+      [%sending @da]    ::  tell frontend we're sending a message at this time
+      [%delivered @da]  ::                that message sent at @da was delivered
   ==
 ::
 +$  conversation-info
