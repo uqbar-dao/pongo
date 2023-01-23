@@ -798,6 +798,7 @@
     %lth   (lth a +.p.selector)
     %nul   =(~ a)
     ?(%top %bottom)  ~|("%nectar: applied invalid selector" !!)
+    %text-find  ?=(^ (find t.p.selector (trip a)))
   ==
 ::
 ++  apply-comparator

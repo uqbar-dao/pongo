@@ -133,9 +133,8 @@
       |=  ci=conversation-info
       :-  (scot %ux id.ci)
       %-  pairs
-      :~  ['name' s+name.ci]
+      :~  ['conversation' (conversation-to-json -.ci)]
           ['unreads' (numb unreads.ci)]
-          ['last_read' (numb last-read.ci)]
           :-  'last_message'
           ?~(last-message.ci ~ (message-to-json:parsing u.last-message.ci))
       ==

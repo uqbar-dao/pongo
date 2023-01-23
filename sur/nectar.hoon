@@ -81,6 +81,8 @@
         ::  only accepted on clustered indices
         [%top n=@]     ::  get the first n rows in order
         [%bottom n=@]  ::  get the last n rows in order
+        ::  only accepted on columns of type @t, @ta, @tas
+        [%text-find t=tape]
     ==
   $-(value ?)
 ::
