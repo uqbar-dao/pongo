@@ -1,6 +1,33 @@
 /-  *pongo
-/+  sig
+/+  sig, nectar
 |%
+::
+::  search thread stuff
+::
+::  type used for search threads
++$  search
+  $:  db=_database:nectar
+      only-in=(unit conversation-id)
+      only-author=(unit @p)
+      phrase=@t
+  ==
+::
+++  do-search
+  |=  search
+  ^-  (list [conversation-id message])
+  =/  table-id
+    ~|  "%pongo: couldn't find conversation"
+    =<  messages-table-id
+    %-  need
+    =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
+    -:(q:db [%select %conversations where=[%s %id %& %eq (need only-in)]])
+  %+  turn
+    -:(q:db [%select table-id where=[%s %content %& %text-find (trip phrase)]])
+  |=  =row:nectar
+  [(need only-in) !<(message [-:!>(*message) row])]
+::
+::  utils
+::
 ++  make-message-hash
   |=  [content=@t src=@p now=@da]
   ^-  @
@@ -78,14 +105,16 @@
   %-  crip
   "{<src>} edited message {<on.ping>} to {<edit.ping>}"
 ::
+::  json creation
+::
 ++  parsing
   =,  enjs:format
   |%
   ++  message-to-json
-    |=  m=message
+    |=  [m=message c=(unit conversation-id)]
     ^-  json
     %-  pairs
-    :~  ['id' s+(scot %ud id.m)]
+    :*  ['id' s+(scot %ud id.m)]
         ['author' s+(scot %p author.m)]
         ::  don't share signatures
         ['timestamp' (sect timestamp.m)]
@@ -98,6 +127,8 @@
         %+  turn  ~(tap by p.reactions.m)
         |=  [p=@p r=reaction]
         [(scot %p p) s+(scot %tas r)]
+        ?~  c  ~
+        ['conversation_id' s+(scot %ux u.c)]^~
     ==
   ::
   ++  conversation-to-json
@@ -136,7 +167,7 @@
       :~  ['conversation' (conversation-to-json -.ci)]
           ['unreads' (numb unreads.ci)]
           :-  'last_message'
-          ?~(last-message.ci ~ (message-to-json:parsing u.last-message.ci))
+          ?~(last-message.ci ~ (message-to-json:parsing u.last-message.ci ~))
       ==
     ::
         %message-list
@@ -145,14 +176,14 @@
       :-  %a
       %+  turn  +.upd
       |=  =message
-      (message-to-json:parsing message)
+      (message-to-json:parsing message ~)
     ::
         %message
       %+  frond
         'message'
       %-  pairs
       :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
-          ['message' (message-to-json:parsing message.upd)]
+          ['message' (message-to-json:parsing message.upd ~)]
       ==
     ::
         %invite
@@ -169,6 +200,14 @@
       %+  frond
         'delivered'
       (sect +.upd)
+    ::
+        %search-result
+      %+  frond
+        'search_result'
+      :-  %a
+      %+  turn  +.upd
+      |=  [c=conversation-id =message]
+      (message-to-json:parsing message `c)
     ==
   --
 --

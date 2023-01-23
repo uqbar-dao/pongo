@@ -32,6 +32,16 @@
         [%reject-invite (ot ~[[%id (se %ux)]])]
         [%block (ot ~[[%who (se %p)]])]
         [%unblock (ot ~[[%who (se %p)]])]
+        ::
+        :-  %search
+        %-  ot
+        :~  [%uid (se %ux)]
+            [%only-in (su hex):dejs-soft:format]  ::  doesn't want dots or 0x
+            [%only-author (su fed:ag):dejs-soft:format]  ::  doesn't want ~
+            [%phrase so]
+        ==
+        ::
+        [%cancel-search (ot ~[[%uid (se %ux)]])]
     ==
     ++  parse-config
       |=  j=json

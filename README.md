@@ -26,9 +26,30 @@ The yellow "delivered" receipts mean that a message was received (not seen, but 
 
 Reactions are not limited to emojis, or validated in any way. I should add some handling around that. You can react again to the same message to override your existing reaction if any. Removing a reaction should probably just be reacting with an empty ''.
 
-You can block and unblock ships from messaging you with these pokes:
+**You can block and unblock ships from messaging you with these pokes**:
 - `{"block":{"who":"~bus"}}`
 - `{"unblock":{"who":"~bus"}}`
+
+**To search messages by phrase (exact matches only)**:
+- First, come up with a unique hex identifier for the search (can be random)
+- Subscribe to path `/search-results/<your-hex-id>`
+- Poke with structure:
+
+  *WEIRD FORMATTING*: "only-in" should be hex number WITHOUT dots or leading 0x. "only-author" should have no leading ~
+  ```
+  {"search":
+     {"uid":"<your-hex-id>",
+      "only-in":"<conversation-id>",
+      "only-author:"zod",
+      "phrase":"what you're searching for"
+      }
+    }
+  ```
+- You can set "only-author" to null to search from all authors. In the future, you will be able to set "only-in" to null to search all conversations. Currently limited to single conversation :(
+- After user navigates away from search, do this poke:
+  `{"cancel-search":{"uid":"<your-hex-id>"}}`
+
+-----
 
 For structure of all pokes see `/mar/pongo/action.hoon`.
 

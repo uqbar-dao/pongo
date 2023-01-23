@@ -134,7 +134,12 @@
   $%  [%make-conversation name=@t config=conversation-metadata]
       [%leave-conversation =conversation-id]
       ::
-      [%send-message =conversation-id =message-kind content=@t reference=(unit message-id)]
+      $:  %send-message
+          =conversation-id
+          =message-kind
+          content=@t
+          reference=(unit message-id)
+      ==
       [%send-message-edit =conversation-id on=message-id edit=@t]
       [%send-reaction =conversation-id on=message-id =reaction]
       ::  frontend telling us we've seen up to message-id in convo
@@ -146,6 +151,13 @@
       ::
       [%block who=@p]
       [%unblock who=@p]
+      ::
+      $:  %search  uid=@ux
+          only-in=(unit conversation-id)
+          only-author=(unit @p)
+          phrase=@t
+      ==
+      [%cancel-search uid=@ux]
   ==
 ::
 ::  update types from scries and subscriptions, used for interacting
@@ -157,6 +169,7 @@
       [%invite conversation]               ::                      new invite
       [%sending @da]    ::  tell frontend we're sending a message at this time
       [%delivered @da]  ::                that message sent at @da was delivered
+      [%search-result (list [=conversation-id =message])]
   ==
 ::
 +$  conversation-info

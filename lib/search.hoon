@@ -1,5 +1,8 @@
 /+  nectar
 |%
+::
+::  just testing performance stuff
+::
 ++  db-search
   |=  s=@t
   =/  t  (trip s)

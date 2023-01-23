@@ -53,6 +53,7 @@
         ?+    mark  (on-poke:def mark vase)
             %ping    (handle-ping:hc !<(ping vase))
             %action  (handle-action:hc !<(action vase))
+            %pongo-action  (handle-action:hc !<(action vase))
         ==
       [cards this]
     ::
@@ -61,15 +62,47 @@
     ++  on-watch
       |=  =path
       ^-  (quip card _this)
-      ::  one path, updates, for frontend to connect to and receive
+      ?>  =(src.bowl our.bowl)
+      ?+    path
+          ~|("watch to erroneous path" !!)
+      ::  path for frontend to connect to and receive
       ::  all actively-flowing information. does not provide anything
       ::  upon watch, only as it happens.
-      ?>  =(src.bowl our.bowl)
-      ?.  ?=([%updates ~] path)
-        ~|("watch to erroneous path" !!)
-      `this
+        [%updates ~]  `this
+      ::  path for frontend to receive search results.
+      ::  subscribe before poking %search with matching uid
+        [%search-results @ ~]  `this
+      ==
     ::
-    ++  on-agent  on-agent:def
+    ++  on-agent
+      |=  [=wire =sign:agent:gall]
+      ^-  (quip card _this)
+      ?+    -.wire  (on-agent:def wire sign)
+          %thread
+        ?+    -.sign  (on-agent:def wire sign)
+            %poke-ack
+          ?~  p.sign  `this
+          %-  (slog leaf+"search thread failed to start" u.p.sign)
+          `this
+        ::
+            %fact
+          ?+    p.cage.sign  (on-agent:def wire sign)
+              %thread-fail
+            =/  err  !<((pair term tang) q.cage.sign)
+            %-  (slog leaf+"search thread failed: {(trip p.err)}" q.err)
+            `this
+              %update
+            ::  forward updates along search results path
+            =/  tid  -.+.+.wire
+            =/  upd  !<(pongo-update q.cage.sign)
+            ~&  >>  "giving fact to frontend on path {<~[/search-results/[tid]]>}: "
+            ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
+            :_  this
+            (fact:io pongo-update+!>(upd) ~[/search-results/[tid]])^~
+          ==
+        ==
+      ==
+    ::
     ++  on-arvo   on-arvo:def
     ++  on-leave  on-leave:def
     ++  on-fail   on-fail:def
@@ -476,6 +509,32 @@
       %unblock
     ::  remove a ship from our block-list
     `state(blocked (~(del in blocked.state) who.action))
+  ::
+      %search
+    ::  search in messages for a phrase. can filter by conversation
+    ::  or author. to get results, first subscribe to /search-results
+    ::  batch results in groupings of 1.000 messages in order of
+    ::  recency to get fast initial returns
+    =/  tid  `@ta`(cat 3 'search_' (scot %ux uid.action))
+    =/  ta-now  `@ta`(scot %da now.bowl)
+    =/  start-args
+      [~ `tid byk.bowl(r da+now.bowl) %search !>(`search`[db.state +.+.action])]
+    :_  state
+    :~  %+  ~(poke pass:io /thread/[ta-now])
+          [our.bowl %spider]
+        spider-start+!>(start-args)
+        %+  ~(watch pass:io /thread/updates/(scot %ux uid.action))
+          [our.bowl %spider]
+        /thread/[tid]/updates
+    ==
+  ::
+      %cancel-search
+    =/  tid  `@ta`(cat 3 'search_' (scot %ux uid.action))
+    =/  ta-now  `@ta`(scot %da now.bowl)
+    :_  state  :_  ~
+    %+  ~(poke pass:io /thread-stop/[ta-now])
+      [our.bowl %spider]
+    spider-stop+!>([tid %.y])
   ==
 ::
 ++  handle-scry
