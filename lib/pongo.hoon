@@ -35,37 +35,37 @@
   |=  [content=@t src=@p now=@da]
   ^-  @
   %-  sham
-  ;:  (cury cat 3)
-    'signed pongo message by '
-    (scot %p src)
-    ' at '
-    (scot %da now)
-    ': '
-    content
+  %+  rap  3
+  :~  'signed pongo message by '
+      (scot %p src)
+      ' at '
+      (scot %da now)
+      ': '
+      content
   ==
 ::
 ++  make-reaction-hash
   |=  [=reaction on=message-id]
   ^-  @
   %-  sham
-  ;:  (cury cat 3)
-    'signed-pongo-react: '
-    reaction
-    'on message '
-    (scot %ud on)
+  %+  rap  3
+  :~  'signed-pongo-react: '
+      reaction
+      'on message '
+      (scot %ud on)
   ==
 ::
 ++  print-message
   |=  =message
   ^-  @t
   ?+    kind.message
-      ;:  (cury cat 3)
-        'Message ('
-        (scot %ud id.message)
-        ') from '
-        (scot %p author.message)
-        ': '
-        content.message
+      %+  rap  3
+      :~  'Message ('
+          (scot %ud id.message)
+          ') from '
+          (scot %p author.message)
+          ': '
+          content.message
       ==
   ::
       %member-add
