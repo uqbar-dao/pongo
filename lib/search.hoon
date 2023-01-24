@@ -3,6 +3,9 @@
 ::
 ::  just testing performance stuff
 ::
+::
+::  db search is slower than raw loop but not excessively so
+::
 ++  db-search
   |=  s=@t
   =/  t  (trip s)
@@ -44,7 +47,7 @@
   %-  lent
   -:(q:db [%select %messages where=[%s %message %& %text-find t]])
 ::
-::
+::  unrolled appears to be like 10% faster than rolled
 ::
 ++  search-unrolled
   |=  [s=@t l=(list cord)]

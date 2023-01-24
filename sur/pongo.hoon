@@ -90,7 +90,7 @@
 +$  conversation-metadata
   $%  [%single-leader members=(set @p) leader=@p]
       [%many-leader members=(set @p) leaders=(set @p)]
-      [%free-for-all members=(set @p) ~]
+      [%free-for-all members=(set @p) ~]  ::  hate this ~
   ==
 ::
 ::  a conversation id is constructed by hashing the concatenation

@@ -9,6 +9,9 @@
     =,  dejs:format
     |^
     %-  action:p
+    =-  ?.  =(%'make-conversation' -.-)  -
+        ?.  =(%'free-for-all' -.+.+.-)  -
+        -(+ [-.+.- -.+.+.- +.+.+.- ~])
     %.  jon
     %-  of
     :~  [%make-conversation (ot ~[[%name so] [%config parse-config]])]
@@ -44,12 +47,11 @@
         [%cancel-search (ot ~[[%uid (se %ux)]])]
     ==
     ++  parse-config
-      |=  j=json
-      %-  conversation-metadata:p
+      ::  %-  conversation-metadata:p
       %-  of
       :~  [%single-leader (ot ~[[%members (as (se %p))] [%leader (se %p)]])]
           [%many-leader (ot ~[[%members (as (se %p))] [%leaders (as (se %p))]])]
-          [%free-for-all (ot ~[[%members (as (se %p))]]) ~]
+          [%free-for-all (ot ~[[%members (as (se %p))]])]
       ==
     --
   --
