@@ -189,7 +189,8 @@
           %conversations
         :_  ~
         convo(members.p.meta (~(del in members.p.meta.convo) author.message))
-      `state
+      :_  state
+      (graph-del-tag author.message name.convo)^~
     =.  timestamp.message  now.bowl
     ~?  ?|  !=(our.bowl author.message)
             ?=(?(%member-add %change-name) kind.message)
@@ -241,12 +242,16 @@
       ==
     =.  db.state
       (insert-rows:db.state messages-table-id.convo ~[message])
-    ?.  (lte kind.message my-special-number)
-      :_  state
-      (give-update [%message id.convo message])^~
     :_  state
-    :~  (delivered-card author.message message-hash)
-        (give-update [%message id.convo message])
+    %+  weld
+      ?.  (lte kind.message my-special-number)
+        (give-update [%message id.convo message])^~
+      :~  (delivered-card author.message message-hash)
+          (give-update [%message id.convo message])
+      ==
+    ?+  kind.message  ~
+      %member-add     (graph-add-tag (slav %p content.message) name.convo)^~
+      %member-remove  (graph-del-tag author.message name.convo)^~
     ==
   ::
       %edit
@@ -315,6 +320,10 @@
       ::  ignore invites from blocked ships
       `state
     ~&  >>  "%pongo: {<src.bowl>} invited us to conversation {<cid>} -- automatically accepting"
+    ::  conversation names must be locally unique, so if we
+    ::  already have a conversation with this name, we append
+    ::  a number to the end of the name.
+    =.  name.conversation.ping  (make-unique-name name.conversation.ping)
     :-  :~  (give-update [%invite conversation.ping])
             ::  remove this to turn off auto-accept
             %+  ~(poke pass:io /accept-invite)
@@ -362,12 +371,17 @@
   ?-    -.action
       %make-conversation
     ::  create a new conversation and possibly send invites
+    ::  whereas conversation IDs are meant to be globally unique,
+    ::  conversation names must only be locally unique, so if we
+    ::  already have a conversation with this name, we append
+    ::  a number to the end of the name.
+    ::
     ::  enforce that we're in conversation
     =/  convo=conversation
       :*  ::  generate unique ID, TODO check back on this
           id=`@ux`(sham (cat 3 our.bowl eny.bowl))
           messages-table-id=`@ux`(sham (sham (cat 3 our.bowl eny.bowl)))
-          name.action
+          name=(make-unique-name name.action)
           last-active=now.bowl
           last-read=0
           router=our.bowl
@@ -390,11 +404,14 @@
     ::  poke all indicated members in metadata with invites
     =/  mems  ~(tap in (~(del in members.config.action) our.bowl))
     ~&  >>  "%pongo: made conversation id: {<id.convo>} and invited {<mems>}"
-    :-  %+  turn  mems
-        |=  to=@p
-        %+  ~(poke pass:io /send-invite)
-          [to %pongo]
-        ping+!>(`ping`[%invite convo])
+    :-  %+  snoc
+          ^-  (list card)
+          %+  turn  mems
+          |=  to=@p
+          %+  ~(poke pass:io /send-invite)
+            [to %pongo]
+          ping+!>(`ping`[%invite convo(name name.action)])
+        (graph-add-tag our.bowl name.convo)
     %=    state
         invites-sent
       |-
@@ -439,10 +456,14 @@
           state
         =-  state(undelivered (~(put by undelivered.state) hash -))
         [message (~(del in members.p.meta.u.convo) our.bowl)]
-    :_  (give-update [%sending now.bowl])^~
-    %+  ~(poke pass:io /send-message)
-      [router.u.convo %pongo]
-    ping+!>(`ping`[%message routed=| conversation-id.action message])
+    %+  weld
+      :~  (give-update [%sending now.bowl])
+          %+  ~(poke pass:io /send-message)
+            [router.u.convo %pongo]
+          ping+!>(`ping`[%message routed=| conversation-id.action message])
+      ==
+    ?.  ?=(%member-remove kind.message)  ~
+    (graph-nuke-tag name.u.convo)^~
   ::
       %send-message-edit
     ::  edit a message we sent (must be of kind %text/%image/%link/%code)
@@ -495,8 +516,14 @@
     ::  accept an invite we've been sent, join the conversation
     ::  add this convo to our conversations table and create
     ::  a messages table for it
+    ::
+    ::  conversation names must be locally unique, so if we
+    ::  already have a conversation with this name, we append
+    ::  a number to the end of the name. (done upon invite receive)
+    ::
     =/  [from=@p convo=conversation]
       (~(got by invites.state) conversation-id.action)
+    ::
     ::  TODO: if we're *already in* this conversation,
     ::  skip all this
     =.  members.p.meta.convo
@@ -513,7 +540,10 @@
         (make-indices:nectar messages-indices)
       ~
     :_  state(invites (~(del by invites.state) id.convo))
-    :_  ~
+    %+  snoc
+      %+  turn  ~(tap in members.p.meta.convo)
+      |=  mem=@p
+      (graph-add-tag mem name.convo)
     %+  ~(poke pass:io /accept-invite)
       [from %pongo]
     ping+!>(`ping`[%accept-invite id.convo])
@@ -569,7 +599,7 @@
   ?+    path
     ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
   ::
-  ::  good scries:
+  ::  good scry ideas:
   ::  -  get X most recently active conversations
   ::  -  get X most recent messages from conversation Y
   ::  -  get X most recent messages each from Y most recently active conversations
@@ -630,6 +660,13 @@
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
   -:(q:db.state [%select %conversations where=[%s %id %& %eq id]])
 ::
+++  make-unique-name
+  |=  given=@t
+  ^-  @t
+  =+  -:(q:db.state [%select %conversations [%s %name %& %eq given]])
+  ?:  ?=(~ -)  given
+  (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
+::
 ++  delivered-card
   |=  [author=@p hash=@uvH]
   ^-  card
@@ -643,4 +680,26 @@
   ~&  >>  "giving fact to frontend: "
   ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
+::
+++  graph-add-tag
+  |=  [who=@p name=@t]
+  ^-  card
+  %+  ~(poke pass:io /add-tag)
+    [our.bowl %social-graph]
+  edit+!>([%pongo [%add-tag ship+our.bowl ship+who name]])
+::
+++  graph-del-tag
+  |=  [who=@p name=@t]
+  ^-  card
+  %+  ~(poke pass:io /del-tag)
+    [our.bowl %social-graph]
+  edit+!>([%pongo [%del-tag ship+our.bowl ship+who name]])
+::
+::  nuke tag of certain convo -- used when we leave conversation
+++  graph-nuke-tag
+  |=  name=@t
+  ^-  card
+  %+  ~(poke pass:io /nuke-tag)
+    [our.bowl %social-graph]
+  edit+!>([%pongo [%nuke-tag name]])
 --
