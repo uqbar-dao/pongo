@@ -2,9 +2,15 @@
 /+  verb, dbug, default-agent, io=agentio,
     *pongo, nectar, sig
 |%
+::
+::  pongo is currently tuned to auto-accept invites to new conversations.
+::  this can be turned off with a few small changes.
+::
 ::  if the conversation has this many members or less,
 ::  we'll track delivery to each recipient.
 ++  delivery-tracking-cutoff  5
+::  arbitrary limit
+++  message-length-limit      1.024
 ::
 ::  %pongo agent state
 ::
@@ -306,8 +312,13 @@
     ?:  (~(has in blocked.state) src.bowl)
       ::  ignore invites from blocked ships
       `state
-    ~&  >>  "%pongo: {<src.bowl>} invited us to conversation {<cid>}"
-    :-  (give-update [%invite conversation.ping])^~
+    ~&  >>  "%pongo: {<src.bowl>} invited us to conversation {<cid>} -- automatically accepting"
+    :-  :~  (give-update [%invite conversation.ping])
+            ::  remove this to turn off auto-accept
+            %+  ~(poke pass:io /accept-invite)
+              [our.bowl %pongo]
+            pongo-action+!>(`action`[%accept-invite cid])
+        ==
     =-  state(invites -)
     %+  ~(put by invites.state)
       cid
