@@ -148,6 +148,8 @@
     ::  we've received a new message
     ::  if we are router, we now poke every member with this message
     =*  message  message.ping
+    ::  enforce character length limit
+    ?>  (lte (met 3 content.message) message-length-limit)
     ?:  &(!routed.ping =(our.bowl router.convo))
       ::  assign ordering to message here
       =.  id.message
@@ -417,6 +419,8 @@
   ::
       %send-message
     ::  create a message and send to a conversation we're in
+    ::  enforce character limit
+    ?>  (lte (met 3 content.action) message-length-limit)
     =/  hash  (make-message-hash content.action [our now]:bowl)
     =/  =message
       :*  id=0  ::  router will make this
