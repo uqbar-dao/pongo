@@ -129,11 +129,14 @@
       ?(%edit %react)  conversation-id.ping
       ?(%accept-invite %reject-invite)  conversation-id.ping
     ==
-  =/  convo=conversation
+  =/  conv=(unit conversation)
     ?:  ?=(%invite -.ping)
-      conversation.ping
-    ~|  "%pongo: couldn't find conversation"
-    (need (fetch-conversation cid))
+      `conversation.ping
+    (fetch-conversation cid)
+  ?~  conv
+    ~&  >>>  "%pongo: couldn't find conversation"
+    `state
+  =*  convo  u.conv
   ?-    -.ping
       %message
     ::  we've received a new message
@@ -357,6 +360,7 @@
           router=our.bowl
           :-  %b
           config.action(members (~(put in members.config.action) our.bowl))
+          %.n
           ~
       ==
     ::  add this conversation to our table
@@ -563,7 +567,8 @@
     =-  ``pongo-update+!>([%conversations -])
     ^-  (list conversation-info)
     %+  turn
-     -:(q:db.state [%select %conversations where=[%n ~]])
+      ::  only get undeleted conversation
+      -:(q:db.state [%select %conversations where=[%s %deleted %& %eq 1]])
     |=  =row:nectar
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])

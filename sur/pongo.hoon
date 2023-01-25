@@ -78,6 +78,7 @@
       [%last-read [4 | %ud]]  ::  id of message we last saw
       [%router [5 | %p]]
       [%members [6 | %blob]]
+      [%deleted [7 | %f]]
   ==
 ::
 ++  conversations-indices
@@ -109,6 +110,7 @@
       last-read=message-id
       router=@p
       meta=[%b p=conversation-metadata]
+      deleted=?
       ~
   ==
 ::
