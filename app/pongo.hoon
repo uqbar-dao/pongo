@@ -394,6 +394,13 @@
   ::
       %leave-conversation
     ::  leave a conversation we're currently in
+    =.  db.state
+      =<  +
+      %-  q:db.state
+      :^    %update
+          %conversations
+        [%s %id %& %eq conversation-id.action]
+      ~[[%deleted |=(v=value:nectar %.y)]]
     =-  $(action `^action`[%send-message -])
     [conversation-id.action %member-remove (scot %p our.bowl) ~]
   ::
@@ -568,7 +575,7 @@
     ^-  (list conversation-info)
     %+  turn
       ::  only get undeleted conversation
-      -:(q:db.state [%select %conversations where=[%s %deleted %& %eq 1]])
+      -:(q:db.state [%select %conversations where=[%s %deleted %& %eq %.n]])
     |=  =row:nectar
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])
