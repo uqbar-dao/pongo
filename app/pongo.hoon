@@ -590,6 +590,11 @@
       -:(q:db.state [%select messages-table-id.u.convo where=[%n ~]])
     |=  =row:nectar
     !<(message [-:!>(*message) row])
+  ::
+  ::  get all sent and received invites
+  ::
+      [%x %invites ~]
+    ``pongo-update+!>([%invites invites-sent.state invites.state])
   ==
 ::
 ++  fetch-conversation

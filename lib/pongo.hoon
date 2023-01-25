@@ -211,6 +211,29 @@
       %+  turn  +.upd
       |=  [c=conversation-id =message]
       (message-to-json:parsing message `c)
+    ::
+        %invites
+      %+  frond
+        'invites'
+      %-  pairs
+      :~  :-  'sent'
+          ^-  json
+          %-  pairs
+          %+  turn  ~(tap by sent.upd)
+          |=  [k=conversation-id s=(set @p)]
+          [(scot %ux k) a+(turn ~(tap in s) ship)]
+      ::
+          :-  'received'
+          ^-  json
+          %-  pairs
+          %+  turn  ~(tap by rec.upd)
+          |=  [k=conversation-id v=[from=@p c=conversation]]
+          :-  (scot %ux k)
+          %-  pairs
+          :~  ['from' (ship from.v)]
+              ['conversation' (conversation-to-json c.v)]
+          ==
+      ==
     ==
   --
 --
