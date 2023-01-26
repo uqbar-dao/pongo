@@ -16,7 +16,6 @@
 ::
 +$  state
   $:  contacts=(map @p detail)
-      our-tags=(map tag @ud)    ::  count of how many of each tag we have
   ==
 +$  card  card:agent:gall
 --
@@ -63,27 +62,27 @@
     ^-  (quip card _state)
     ?-    -.action
         %add-tag
-      =/  count=@ud  (~(gut by our-tags.state) tag.action 0)
-      :_  state(our-tags (~(put by our-tags.state) tag.action +(count)))
-      :_  ~
-      %+  ~(poke pass:io /add-tag)
-        [our.bowl %social-graph]
-      edit+!>([%posse [%add-tag ship+our.bowl ship+who.action tag.action]])
-    ::
-        %del-tag
-      =/  count=@ud  (~(gut by our-tags.state) tag.action 0)
-      =.  our-tags.state
-        ?:  =(count 0)
-          our-tags.state
-        ?:  =(count 1)
-          (~(del by our-tags.state) tag.action)
-        (~(put by our-tags.state) tag.action (dec count))
       :_  state  :_  ~
       %+  ~(poke pass:io /add-tag)
         [our.bowl %social-graph]
-      edit+!>([%posse [%del-tag ship+our.bowl ship+who.action tag.action]])
+      :-  %social-graph-edit
+      !>([%posse [%add-tag tag.action ship+our.bowl ship+who.action]])
+    ::
+        %del-tag
+      :_  state  :_  ~
+      %+  ~(poke pass:io /add-tag)
+        [our.bowl %social-graph]
+      :-  %social-graph-edit
+      !>([%posse [%del-tag tag.action ship+our.bowl ship+who.action]])
     ::
         %edit-detail  !!
+    ::
+        %join-posse
+      :_  state  :_  ~
+      %+  ~(poke pass:io /join-posse)
+        [our.bowl %social-graph]
+      :-  %social-graph-edit
+      !>([%posse [%start-tracking controller.action %posse tag.action]])
     ==
   ::
   ++  handle-scry

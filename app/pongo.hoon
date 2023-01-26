@@ -60,7 +60,6 @@
       =^  cards  state
         ?+  mark  (on-poke:def mark vase)
           %ping                 (handle-ping:hc !<(ping vase))
-          %action               (handle-action:hc !<(action vase))
           %pongo-action         (handle-action:hc !<(action vase))
           %social-graph-update  (handle-graph-update:hc !<(update:s vase))
         ==
@@ -194,6 +193,11 @@
         convo(members.p.meta (~(del in members.p.meta.convo) author.message))
       :_  state
       (graph-del-tag author.message name.convo)^~
+    ?:  ?&  ?=(%member-remove kind.message)
+            !(valid-removal message convo)
+        ==
+      ::  reject invalid removals!
+      `state
     =.  timestamp.message  now.bowl
     ~?  ?|  !=(our.bowl author.message)
             ?=(?(%member-add %change-name) kind.message)
@@ -215,9 +219,15 @@
               ?-  -.p.meta.convo
                 %free-for-all  %.y
                   %single-leader
-                =(author.message leader.p.meta.convo)
+                ?|  =(author.message leader.p.meta.convo)
+                    ?&  ?=(%member-remove kind.message)
+                        =(author.message (slav %p content.message))
+                ==  ==
                   %many-leader
-                (~(has in leaders.p.meta.convo) author.message)
+                ?|  (~(has in leaders.p.meta.convo) author.message)
+                    ?&  ?=(%member-remove kind.message)
+                        =(author.message (slav %p content.message))
+                ==  ==
           ==  ==
         convo
       =?    members.p.meta.convo
@@ -231,6 +241,11 @@
       =?    name.convo
           ?=(%change-name kind.message)
         content.message
+      =?    deleted.convo
+          ?&  ?=(%member-remove kind.message)
+              (valid-removal message convo)
+          ==
+        %.y
       ?+    -.p.meta.convo  convo
           %many-leader
         %=    convo
@@ -253,8 +268,12 @@
           (give-update [%message id.convo message])
       ==
     ?+  kind.message  ~
-      %member-add     (graph-add-tag (slav %p content.message) name.convo)^~
-      %member-remove  (graph-del-tag author.message name.convo)^~
+        %member-add
+      (graph-add-tag (slav %p content.message) name.convo)^~
+        %member-remove
+      ?:  =(our.bowl (slav %p content.message))
+        (graph-nuke-tag name.convo)^~
+      (graph-del-tag (slav %p content.message) name.convo)^~
     ==
   ::
       %edit
@@ -326,7 +345,6 @@
     ::  conversation names must be locally unique, so if we
     ::  already have a conversation with this name, we append
     ::  a number to the end of the name.
-    =.  name.conversation.ping  (make-unique-name name.conversation.ping)
     :-  :~  (give-update [%invite conversation.ping])
             ::  remove this to turn off auto-accept
             %+  ~(poke pass:io /accept-invite)
@@ -532,7 +550,8 @@
             [router.u.convo %pongo]
           ping+!>(`ping`[%message routed=| conversation-id.action message])
       ==
-    ?.  ?=(%member-remove kind.message)  ~
+    ?.  ?=(%member-remove kind.message)        ~
+    ?.  =(our.bowl (slav %p content.message))  ~
     (graph-nuke-tag name.u.convo)^~
   ::
       %send-message-edit
@@ -589,26 +608,36 @@
     ::
     ::  conversation names must be locally unique, so if we
     ::  already have a conversation with this name, we append
-    ::  a number to the end of the name. (done upon invite receive)
+    ::  a number to the end of the name.
     ::
     =/  [from=@p convo=conversation]
       (~(got by invites.state) conversation-id.action)
-    ::
-    ::  TODO: if we're *already in* this conversation,
-    ::  skip all this
     =.  members.p.meta.convo
       (~(put in members.p.meta.convo) our.bowl)
-    =.  db.state
-      %+  insert-rows:db.state
+    =^  convo  db.state
+      ?~  hav=(fetch-conversation id.convo)
+        ::  we've never been in this conversation before
+        =.  name.convo  (make-unique-name name.convo)
+        =.  db.state
+          =+  %+  insert-rows:db.state
+                %conversations
+              ~[convo(last-active now.bowl, last-read 0)]
+          %+  add-table:-
+            messages-table-id.convo
+          :^    (make-schema:nectar messages-schema)
+              primary-key=~[%id]
+            (make-indices:nectar messages-indices)
+          ~
+        [convo db.state]
+      ::  we've been here before, revive "deleted" convo
+      ?.  deleted.u.hav
+        ::  we've been here before and we never really left!
+        ::  this could be a trap!
+        !!
+      :-  convo
+      %+  update-rows:db.state
         %conversations
       ~[convo(last-active now.bowl, last-read 0)]
-    =.  db.state
-      %+  add-table:db.state
-        messages-table-id.convo
-      :^    (make-schema:nectar messages-schema)
-          primary-key=~[%id]
-        (make-indices:nectar messages-indices)
-      ~
     :_  state(invites (~(del by invites.state) id.convo))
     %+  snoc
       %+  turn  ~(tap in members.p.meta.convo)
@@ -670,11 +699,32 @@
       %all  !!  ::  we don't like these
       %new-tag
     ::  if a ship-node, add a member to chat
-    !!
+    =/  cid  (~(got by tagged.state) tag.p.update)
+    =/  convo  (need (fetch-conversation cid))
+    ?.  ?=(%ship -.to.q.update)  `state
+    ?:  (~(has in members.p.meta.convo) +.to.q.update)  `state
+    :_  =-  state(invites-sent -)
+        (~(put ju invites-sent.state) id.convo +.to.q.update)
+    :_  ~
+    %+  ~(poke pass:io /send-invite)
+      [+.to.q.update %pongo]
+    ping+!>(`ping`[%invite convo])
   ::
       %gone-tag
     ::  if a ship-node, remove a member from chat
-    !!
+    ::  send a member-remove message to kick, only if we are leader
+    =/  cid  (~(got by tagged.state) tag.p.update)
+    =/  convo  (need (fetch-conversation cid))
+    ?.  ?=(%ship -.to.q.update)                         `state
+    ?.  (~(has in members.p.meta.convo) +.to.q.update)  `state
+    ?.  ?=(%single-leader -.p.meta.convo)               `state
+    ?.  =(our.bowl leader.p.meta.convo)                 `state
+    :_  state  :_  ~
+    %+  ~(poke pass:io /send-kick-message)
+      [our.bowl %pongo]
+    :-  %pongo-action
+    !>  ^-  action
+    [%send-message id.convo %member-remove (scot %p +.to.q.update) ~]
   ==
 ::
 ++  handle-scry
@@ -751,6 +801,17 @@
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::
+++  valid-removal
+  |=  [=message convo=conversation]
+  ^-  ?
+  ?.  =(%member-remove kind.message)  %.n
+  ?:  =(author.message (slav %p content.message))  %.y
+  ?-  -.p.meta.convo
+    %free-for-all  %.n
+    %single-leader  =(author.message leader.p.meta.convo)
+    %many-leader  (~(has in leaders.p.meta.convo) author.message)
+  ==
+::
 ++  delivered-card
   |=  [author=@p hash=@uvH]
   ^-  card
@@ -761,23 +822,25 @@
 ++  give-update
   |=  upd=pongo-update
   ^-  card
-  ~&  >>  "giving fact to frontend: "
-  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
+  ::  ~&  >>  "giving fact to frontend: "
+  ::  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
 ::
 ++  graph-add-tag
-  |=  [who=@p name=@t]
+  |=  [who=@p convo-name=@t]
   ^-  card
   %+  ~(poke pass:io /add-tag)
     [our.bowl %social-graph]
-  edit+!>([%pongo [%add-tag ship+our.bowl ship+who name]])
+  :-  %social-graph-edit
+  !>([%pongo [%add-tag convo-name ship+our.bowl ship+who]])
 ::
 ++  graph-del-tag
-  |=  [who=@p name=@t]
+  |=  [who=@p convo-name=@t]
   ^-  card
   %+  ~(poke pass:io /del-tag)
     [our.bowl %social-graph]
-  edit+!>([%pongo [%del-tag ship+our.bowl ship+who name]])
+  :-  %social-graph-edit
+  !>([%pongo [%del-tag convo-name ship+our.bowl ship+who]])
 ::
 ::  nuke tag of certain convo -- used when we leave conversation
 ++  graph-nuke-tag
@@ -785,28 +848,33 @@
   ^-  card
   %+  ~(poke pass:io /nuke-tag)
     [our.bowl %social-graph]
-  edit+!>([%pongo [%nuke-tag name]])
+  :-  %social-graph-edit
+  !>([%pongo [%nuke-tag name]])
 ::
 ++  scry-tag-controller
   |=  tag=@t
   ^-  @p
-  =<  +
-  .^  [%controller @p]  %gx
-     (scot %p our.bowl)  %social-graph  (scot %da now.bowl)
-     %controller  %posse  tag  %noun
-  ==
+  =/  res
+    .^  graph-result:s  %gx
+      %+  weld
+        /(scot %p our.bowl)/social-graph/(scot %da now.bowl)
+      /controller/posse/[tag]/noun
+    ==
+  ?>  ?=(%controller -.res)
+  +.res
 ::
 ++  get-ships-from-tag
   |=  [center=@p tag=@t]
   ^-  (set @p)
   =/  nodes
-    =<  +
-    .^  [%nodes (set node:s)]  %gx
-       (scot %p our.bowl)  %social-graph  (scot %da now.bowl)
-       %nodes  %posse  %ship  (scot %p center)  tag  %noun
+    .^  graph-result:s  %gx
+      %+  weld
+        /(scot %p our.bowl)/social-graph/(scot %da now.bowl)
+      /nodes/posse/ship/(scot %p center)/[tag]/noun
     ==
+  ?>  ?=(%nodes -.nodes)
   ::  filter nodes for only ships
   %-  ~(gas in *(set @p))
-  %+  murn  ~(tap in nodes)
+  %+  murn  ~(tap in +.nodes)
   |=(=node:s ?:(?=(%ship -.node) `+.node ~))
 --

@@ -15,6 +15,7 @@
     %.  jon
     %-  of
     :~  [%make-conversation (ot ~[[%name so] [%config parse-config]])]
+        [%make-conversation-from-posse (ot ~[[%name so] [%tag so]])]
         [%leave-conversation (ot ~[[%convo (se %ux)]])]
         ::
         :-  %send-message

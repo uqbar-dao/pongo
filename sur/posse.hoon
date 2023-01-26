@@ -13,5 +13,7 @@
   $%  [%add-tag who=@p =tag]
       [%del-tag who=@p =tag]
       [%edit-detail who=@p =detail]
+      ::  sync our graph with that of controller
+      [%join-posse controller=@p =tag]
   ==
 --

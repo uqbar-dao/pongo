@@ -38,7 +38,7 @@
 ::
 +$  track
   %+  pair  term  ::  the app poking us, for now
-  $%  [%fetch =app =tag]  ::  retrieve current state of graph
+  $%  [%fetch =app =tag]  ::  retrieve current state of graph (use scry instead)
       [%track =app =tag]  ::  sign up to get poked updates
       [%leave =app =tag]  ::  stop getting poked updates
   ==
