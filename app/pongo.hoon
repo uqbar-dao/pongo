@@ -587,7 +587,7 @@
     ?.  (gth message-id.action last-read.u.convo)
       `state
     =-  `state(db -)
-    %+  insert-rows:db.state
+    %+  update-rows:db.state
       %conversations
     ~[u.convo(last-read message-id.action)]
   ::

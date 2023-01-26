@@ -33,7 +33,7 @@
         :-  %send-reaction
         (ot ~[[%convo (se %ux)] [%on (se %ud)] [%reaction (se %t)]])
         ::
-        [%read-message (ot ~[[%convo (se %ux)] [%message (se %ux)]])]
+        [%read-message (ot ~[[%convo (se %ux)] [%message (se %ud)]])]
         [%make-invite (ot ~[[%to (se %p)] [%id (se %ux)]])]
         [%accept-invite (ot ~[[%id (se %ux)]])]
         [%reject-invite (ot ~[[%id (se %ux)]])]
