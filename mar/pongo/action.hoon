@@ -27,8 +27,11 @@
             [%reference (su dem):dejs-soft:format]
         ==
         ::
+        :-  %send-message-edit
+        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%edit (se %t)]])
+        ::
         :-  %send-reaction
-        (ot ~[[%convo (se %ux)] [%on (se %ux)] [%reaction (se %ta)]])
+        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%reaction (se %t)]])
         ::
         [%read-message (ot ~[[%convo (se %ux)] [%message (se %ux)]])]
         [%make-invite (ot ~[[%to (se %p)] [%id (se %ux)]])]
