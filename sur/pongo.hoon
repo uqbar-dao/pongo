@@ -79,10 +79,12 @@
       [%router [5 | %p]]
       [%members [6 | %blob]]
       [%deleted [7 | %f]]
+      ::  [%tagged [8 & %t]]  ::  optional associated posse-tag
   ==
 ::
 ++  conversations-indices
   :~  [~[%id] primary=& autoincrement=~ unique=& clustered=|]
+      [~[%name] primary=| autoincrement=~ unique=& clustered=|]
       [~[%last-active] primary=| autoincrement=~ unique=| clustered=&]
   ==
 ::
@@ -134,6 +136,8 @@
 ::
 +$  action
   $%  [%make-conversation name=@t config=conversation-metadata]
+      ::  generate a member-set from a %posse tag
+      [%make-conversation-from-posse name=@t tag=@t]
       [%leave-conversation =conversation-id]
       ::
       $:  %send-message

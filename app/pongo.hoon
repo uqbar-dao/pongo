@@ -1,4 +1,4 @@
-/-  *pongo
+/-  *pongo, s=social-graph
 /+  verb, dbug, default-agent, io=agentio,
     *pongo, nectar, sig
 |%
@@ -20,6 +20,8 @@
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
       undelivered=(map @uvH [message want=(set @p)])  ::  keyed by hash
+      ::  %posse-linked conversation tracking
+      tagged=(map tag:s conversation-id)
   ==
 +$  card  card:agent:gall
 --
@@ -36,7 +38,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ ~ ~]
+      :_  [~ ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %conversations
       ^-  table:nectar
@@ -56,10 +58,11 @@
       |=  [=mark =vase]
       ^-  (quip card _this)
       =^  cards  state
-        ?+    mark  (on-poke:def mark vase)
-            %ping    (handle-ping:hc !<(ping vase))
-            %action  (handle-action:hc !<(action vase))
-            %pongo-action  (handle-action:hc !<(action vase))
+        ?+  mark  (on-poke:def mark vase)
+          %ping                 (handle-ping:hc !<(ping vase))
+          %action               (handle-action:hc !<(action vase))
+          %pongo-action         (handle-action:hc !<(action vase))
+          %social-graph-update  (handle-graph-update:hc !<(update:s vase))
         ==
       [cards this]
     ::
@@ -376,18 +379,19 @@
     ::  already have a conversation with this name, we append
     ::  a number to the end of the name.
     ::
-    ::  enforce that we're in conversation
+    ::  automate that we're in conversation
+    =+  (sham (cat 3 our.bowl eny.bowl))
     =/  convo=conversation
       :*  ::  generate unique ID, TODO check back on this
-          id=`@ux`(sham (cat 3 our.bowl eny.bowl))
-          messages-table-id=`@ux`(sham (sham (cat 3 our.bowl eny.bowl)))
+          id=`@ux`-
+          messages-table-id=`@ux`(sham -)
           name=(make-unique-name name.action)
           last-active=now.bowl
           last-read=0
           router=our.bowl
           :-  %b
           config.action(members (~(put in members.config.action) our.bowl))
-          %.n
+          deleted=%.n
           ~
       ==
     ::  add this conversation to our table
@@ -420,6 +424,72 @@
         mems  t.mems
         invites-sent.state  (~(put ju invites-sent.state) id.convo i.mems)
       ==
+    ==
+  ::
+      %make-conversation-from-posse
+    ::  make-conversation, but track a %posse tag
+    ::  if we are the controller of the tag, make ourselves leader
+    ::  if we are not, make it a free-for-all
+    =/  tag-owner=@p
+      (scry-tag-controller tag.action)
+    =/  members=(set @p)
+      (get-ships-from-tag tag-owner tag.action)
+    ::  we must ourselves have the tag
+    ?>  (~(has in members) our.bowl)
+    ::
+    =+  (sham (cat 3 our.bowl eny.bowl))
+    =/  convo=conversation
+      :*  ::  generate unique ID, TODO check back on this
+          id=`@ux`-
+          messages-table-id=`@ux`(sham -)
+          name=(make-unique-name name.action)
+          last-active=now.bowl
+          last-read=0
+          router=our.bowl
+          :-  %b
+          ?:  =(our.bowl tag-owner)
+            [%single-leader members our.bowl]
+          [%free-for-all members ~]
+          deleted=%.n
+          ~
+      ==
+    ::  add this conversation to our table
+    ::  and create a messages table for it
+    =.  db.state
+      (insert-rows:db.state %conversations ~[convo])
+    =.  db.state
+      %+  add-table:db.state
+        messages-table-id.convo
+      :^    (make-schema:nectar messages-schema)
+          primary-key=~[%id]
+        (make-indices:nectar messages-indices)
+      ~
+    ::  poke all indicated members in metadata with invites
+    =/  mems  ~(tap in (~(del in members) our.bowl))
+    ~&  >>  "%pongo: made conversation id: {<id.convo>} and invited {<mems>}"
+    :_  %=    state
+            tagged
+          (~(put by tagged.state) tag.action id.convo)
+            invites-sent
+          |-
+          ?~  mems  invites-sent.state
+          %=  $
+            mems  t.mems
+            invites-sent.state  (~(put ju invites-sent.state) id.convo i.mems)
+          ==
+        ==
+    ::  start tracking the tag and automatically
+    ::  adding/removing members on changes.
+    %+  weld
+      %+  turn  mems
+      |=  to=@p
+      %+  ~(poke pass:io /send-invite)
+        [to %pongo]
+      ping+!>(`ping`[%invite convo(name name.action)])
+    :~  (graph-add-tag our.bowl name.convo)
+        %+  ~(poke pass:io /watch-tag)
+          [our.bowl %social-graph]
+        social-graph-track+!>(`track:s`[%pongo %track %posse tag.action])
     ==
   ::
       %leave-conversation
@@ -593,6 +663,20 @@
     spider-stop+!>([tid %.y])
   ==
 ::
+++  handle-graph-update
+  |=  =update:s
+  ^-  (quip card _state)
+  ?-    -.q.update
+      %all  !!  ::  we don't like these
+      %new-tag
+    ::  if a ship-node, add a member to chat
+    !!
+  ::
+      %gone-tag
+    ::  if a ship-node, remove a member from chat
+    !!
+  ==
+::
 ++  handle-scry
   |=  =path
   ^-  (unit (unit cage))
@@ -702,4 +786,27 @@
   %+  ~(poke pass:io /nuke-tag)
     [our.bowl %social-graph]
   edit+!>([%pongo [%nuke-tag name]])
+::
+++  scry-tag-controller
+  |=  tag=@t
+  ^-  @p
+  =<  +
+  .^  [%controller @p]  %gx
+     (scot %p our.bowl)  %social-graph  (scot %da now.bowl)
+     %controller  %posse  tag  %noun
+  ==
+::
+++  get-ships-from-tag
+  |=  [center=@p tag=@t]
+  ^-  (set @p)
+  =/  nodes
+    =<  +
+    .^  [%nodes (set node:s)]  %gx
+       (scot %p our.bowl)  %social-graph  (scot %da now.bowl)
+       %nodes  %posse  %ship  (scot %p center)  tag  %noun
+    ==
+  ::  filter nodes for only ships
+  %-  ~(gas in *(set @p))
+  %+  murn  ~(tap in nodes)
+  |=(=node:s ?:(?=(%ship -.node) `+.node ~))
 --
