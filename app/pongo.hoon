@@ -822,8 +822,8 @@
 ++  give-update
   |=  upd=pongo-update
   ^-  card
-  ::  ~&  >>  "giving fact to frontend: "
-  ::  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
+  ~&  >>  "giving fact to frontend: "
+  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
 ::
 ++  graph-add-tag
