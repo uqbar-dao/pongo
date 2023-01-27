@@ -29,10 +29,10 @@
         ==
         ::
         :-  %send-message-edit
-        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%edit (se %t)]])
+        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%edit so]])
         ::
         :-  %send-reaction
-        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%reaction (se %t)]])
+        (ot ~[[%convo (se %ux)] [%on (se %ud)] [%reaction so]])
         ::
         [%read-message (ot ~[[%convo (se %ux)] [%message (se %ud)]])]
         [%make-invite (ot ~[[%to (se %p)] [%id (se %ux)]])]
