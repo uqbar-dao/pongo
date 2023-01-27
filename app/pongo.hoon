@@ -402,6 +402,9 @@
     ::  a number to the end of the name.
     ::
     ::  automate that we're in conversation
+    ::  enforce that conversation has at least 1 other member
+    =.  members.config.action  (~(put in members.config.action) our.bowl)
+    ?>  (gth ~(wyt in members.config.action) 1)
     =+  (sham (cat 3 our.bowl eny.bowl))
     =/  convo=conversation
       :*  ::  generate unique ID, TODO check back on this
@@ -412,7 +415,7 @@
           last-read=0
           router=our.bowl
           :-  %b
-          config.action(members (~(put in members.config.action) our.bowl))
+          config.action(members members.config.action)
           deleted=%.n
           ~
       ==
@@ -458,6 +461,7 @@
       (get-ships-from-tag tag-owner tag.action)
     ::  we must ourselves have the tag
     ?>  (~(has in members) our.bowl)
+    ?>  (gth ~(wyt in members) 1)
     ::
     =+  (sham (cat 3 our.bowl eny.bowl))
     =/  convo=conversation
