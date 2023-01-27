@@ -60,6 +60,7 @@
   $?  (unit @)
   $%  [%l p=(list value)]       [%s p=(set value)]
       [%m p=(map value value)]  [%b p=*]
+      [%j p=(jug value value)]
   ==  ==
 ::
 +$  condition

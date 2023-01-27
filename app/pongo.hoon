@@ -132,9 +132,9 @@
   =/  cid=conversation-id
     ::  IRRITATING type refinement here
     ?-  -.ping
-      %invite   id.conversation.ping
-      %message  conversation-id.ping
-      ?(%edit %react)  conversation-id.ping
+      %invite                           id.conversation.ping
+      %message                          conversation-id.ping
+      ?(%edit %react)                   conversation-id.ping
       ?(%accept-invite %reject-invite)  conversation-id.ping
     ==
   =/  conv=(unit conversation)
@@ -206,6 +206,7 @@
     ::  if the message kind is a member or leader set edit,
     ::  we update our conversation to reflect it -- only
     ::  if message was sent by someone allowed to do it
+    ::  TODO clean up this garbage logic
     =.  db.state
       =-  (update-rows:db.state %conversations -)
       :_  ~
@@ -279,9 +280,9 @@
       %edit
     ::  we've received an edit of a message
     ?.  (~(has in members.p.meta.convo) src.bowl)
-      ~&  >>>  "%pongo: rejecting reaction"  `state
+      ~&  >>>  "%pongo: rejecting edit"  `state
     ?.  (~(has by tables:db.state) messages-table-id.convo)
-      ~&  >>>  "%pongo: rejecting reaction"  `state
+      ~&  >>>  "%pongo: rejecting edit"  `state
     ::
     ::  TODO: implement a waiting feature for edits to message IDs
     ::  which we haven't received yet!!!
@@ -308,7 +309,8 @@
               [%edited |=(v=value:nectar `value:nectar`%.y)]
           ==
       ==
-    `state
+    :_  state  :_  ~
+    (give-update [%edited id.convo [on edit]:ping])
   ::
       %react
     ::  we've received a new message reaction
@@ -326,15 +328,16 @@
       =+  |=  v=value:nectar
           ^-  value:nectar
           ?>  ?=(^ v)
-          ?>  ?=(%m -.v)
-          [%m (~(put by p.v) src.bowl reaction.ping)]
+          ?>  ?=(%j -.v)
+          j+(~(put ju p.v) reaction.ping src.bowl)
       =<  +
       %-  q:db.state
       :^    %update
           messages-table-id.convo
         [%s %id %& %eq on.ping]
       ~[[%reactions -]]
-    `state
+    :_  state  :_  ~
+    (give-update [%reacted id.convo [on reaction]:ping])
   ::
       %invite
     ::  we've received an invite to a conversation
@@ -369,7 +372,7 @@
           now.bowl
           %member-add
           (scot %p src.bowl)
-          %.n  ~  [%m ~]  ~
+          %.n  ~  [%j ~]  ~
       ==
     :_  ~
     %+  ~(poke pass:io /accept-invite)
@@ -536,7 +539,7 @@
           content.action
           edited=%.n
           reference.action
-          [%m ~]  ~
+          [%j ~]  ~
       ==
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)

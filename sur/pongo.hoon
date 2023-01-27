@@ -38,7 +38,7 @@
       content=@t
       edited=?
       reference=(unit message-id)
-      reactions=[%m p=(map @p reaction)]
+      reactions=[%j p=(jug reaction @p)]
       ~
   ==
 ::
@@ -50,9 +50,7 @@
 ::  be many things can be broken into multiple messages.
 ::
 +$  message-kind
-  $?  %text  %image
-      %link  %code
-      %reply
+  $?  %text  %code
       ::  in these kinds, message content is a `@t`(scot %p @p)
       %member-add     ::  in FFA, anyone can send this, otherwise only leaders
       %member-remove  ::  in FFA, only member leaving can send
@@ -61,7 +59,7 @@
       %leader-remove  ::  only for %many-leader
       %change-router  ::  TBD
   ==
-++  my-special-number  521.510.348.146
+++  my-special-number  521.510.348.146  ::  `@`%reply, lol
 ::
 ::  emojees
 ::
@@ -79,7 +77,6 @@
       [%router [5 | %p]]
       [%members [6 | %blob]]
       [%deleted [7 | %f]]
-      ::  [%tagged [8 & %t]]  ::  optional associated posse-tag
   ==
 ::
 ++  conversations-indices
@@ -172,6 +169,8 @@
   $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
       [%message =conversation-id =message]  ::  tell frontend about new message
+      [%edited =conversation-id on=message-id edit=@t]
+      [%reacted =conversation-id on=message-id =reaction]
       [%invite conversation]                ::                      new invite
       [%sending @da]    ::  tell frontend we're sending a message at this time
       [%delivered @da]  ::                that message sent at @da was delivered
