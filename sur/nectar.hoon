@@ -3,6 +3,9 @@
 ::            database
 ::
 |%
+::
++$  table-name  [app=@tas label=@]
+::
 ::  TODO:  external indices
 ::  make index a separate object from table
 ::  store them alongside tables

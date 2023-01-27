@@ -40,7 +40,7 @@
       ::  produce a conversations table with saved schema and indices
       :_  [~ ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
-        %conversations
+        %pongo^%conversations
       ^-  table:nectar
       :^    (make-schema:nectar conversations-schema)
           primary-key=~[%id]
@@ -158,7 +158,7 @@
       =.  id.message
         =/  res
           =<  -
-          %-  q:db.state
+          %+  q:db.state  %pongo
           [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
         ?~  res  0
         +(id:!<(^message [-:!>(*^message) (head res)]))
@@ -178,7 +178,7 @@
     ?.  (~(has in members.p.meta.convo) author.message)
       ~&  >>>  "%pongo: rejecting weird message"  `state
     ::  TODO this is a weird bug check really, can probs remove
-    ?.  (~(has by tables:db.state) messages-table-id.convo)
+    ?.  (~(has by tables:db.state) %pongo^messages-table-id.convo)
       ~&  >>>  "%pongo: rejecting WEIRD message"  `state
     ?:  (~(has in blocked.state) author.message)
       ::  ignore any messages from blocked ships unless
@@ -189,7 +189,7 @@
         (delivered-card author.message id.convo message-hash)^~
       =.  db.state
         %+  update-rows:db.state
-          %conversations
+          %pongo^%conversations
         :_  ~
         convo(members.p.meta (~(del in members.p.meta.convo) author.message))
       :_  state
@@ -209,7 +209,7 @@
     ::  if message was sent by someone allowed to do it
     ::  TODO clean up this garbage logic
     =.  db.state
-      =-  (update-rows:db.state %conversations -)
+      =-  (update-rows:db.state %pongo^%conversations -)
       :_  ~
       ^-  conversation
       =.  last-active.convo  now.bowl
@@ -261,7 +261,7 @@
         ==
       ==
     =.  db.state
-      (insert-rows:db.state messages-table-id.convo ~[message])
+      (insert-rows:db.state %pongo^messages-table-id.convo ~[message])
     :_  state
     %+  weld
       ?.  (lte kind.message my-special-number)
@@ -282,7 +282,7 @@
     ::  we've received an edit of a message
     ?.  (~(has in members.p.meta.convo) src.bowl)
       ~&  >>>  "%pongo: rejecting edit"  `state
-    ?.  (~(has by tables:db.state) messages-table-id.convo)
+    ?.  (~(has by tables:db.state) %pongo^messages-table-id.convo)
       ~&  >>>  "%pongo: rejecting edit"  `state
     ::
     ::  TODO: implement a waiting feature for edits to message IDs
@@ -296,14 +296,14 @@
           ?>  ?=(@t v)
           edit.ping
       =<  +
-      %-  q:db.state
+      %+  q:db.state  %pongo
       :*  %update  messages-table-id.convo
           :+  %and
             [%s %id %& %eq on.ping]
           :+  %and
             [%s %author %& %eq src.bowl]
           ::  comically hacky way to enforce that edits can only be done
-          ::  on kinds %text, %image, %link, %code, %reply
+          ::  on kinds %text, %code
           ::  i just like doing it this way
           [%s %kind %& %lte my-special-number]
           :~  [%content -]
@@ -317,7 +317,7 @@
     ::  we've received a new message reaction
     ?.  (~(has in members.p.meta.convo) src.bowl)
       ~&  >>>  "%pongo: rejecting reaction"  `state
-    ?.  (~(has by tables:db.state) messages-table-id.convo)
+    ?.  (~(has by tables:db.state) %pongo^messages-table-id.convo)
       ~&  >>>  "%pongo: rejecting reaction"  `state
     ::
     ::  TODO: implement a waiting feature for reacts to message IDs
@@ -332,7 +332,7 @@
           ?>  ?=(%j -.v)
           j+(~(put ju p.v) reaction.ping src.bowl)
       =<  +
-      %-  q:db.state
+      %+  q:db.state  %pongo
       :^    %update
           messages-table-id.convo
         [%s %id %& %eq on.ping]
@@ -422,10 +422,10 @@
     ::  add this conversation to our table
     ::  and create a messages table for it
     =.  db.state
-      (insert-rows:db.state %conversations ~[convo])
+      (insert-rows:db.state %pongo^%conversations ~[convo])
     =.  db.state
       %+  add-table:db.state
-        messages-table-id.convo
+        %pongo^messages-table-id.convo
       :^    (make-schema:nectar messages-schema)
           primary-key=~[%id]
         (make-indices:nectar messages-indices)
@@ -482,10 +482,10 @@
     ::  add this conversation to our table
     ::  and create a messages table for it
     =.  db.state
-      (insert-rows:db.state %conversations ~[convo])
+      (insert-rows:db.state %pongo^%conversations ~[convo])
     =.  db.state
       %+  add-table:db.state
-        messages-table-id.convo
+        %pongo^messages-table-id.convo
       :^    (make-schema:nectar messages-schema)
           primary-key=~[%id]
         (make-indices:nectar messages-indices)
@@ -522,7 +522,7 @@
     ::  leave a conversation we're currently in
     =.  db.state
       =<  +
-      %-  q:db.state
+      %+  q:db.state  %pongo
       :^    %update
           %conversations
         [%s %id %& %eq conversation-id.action]
@@ -563,7 +563,7 @@
     (graph-nuke-tag name.u.convo)^~
   ::
       %send-message-edit
-    ::  edit a message we sent (must be of kind %text/%image/%link/%code)
+    ::  edit a message we sent (must be of kind %text/%code)
     ::  as opposed to *new* messages, which must be sequenced by router,
     ::  we can poke edits out directly to all members
     ?~  convo=(fetch-conversation conversation-id.action)
@@ -596,7 +596,7 @@
       `state
     =-  `state(db -)
     %+  update-rows:db.state
-      %conversations
+      %pongo^%conversations
     ~[u.convo(last-read message-id.action)]
   ::
       %make-invite
@@ -628,10 +628,10 @@
         =.  name.convo  (make-unique-name name.convo)
         =.  db.state
           =+  %+  insert-rows:db.state
-                %conversations
+                %pongo^%conversations
               ~[convo(last-active now.bowl, last-read 0)]
           %+  add-table:-
-            messages-table-id.convo
+            %pongo^messages-table-id.convo
           :^    (make-schema:nectar messages-schema)
               primary-key=~[%id]
             (make-indices:nectar messages-indices)
@@ -644,7 +644,7 @@
         !!
       :-  convo
       %+  update-rows:db.state
-        %conversations
+        %pongo^%conversations
       ~[convo(last-active now.bowl, last-read 0)]
     :_  state(invites (~(del by invites.state) id.convo))
     %+  snoc
@@ -743,15 +743,10 @@
   ::
   ::  good scry ideas:
   ::  -  get X most recently active conversations
-  ::  -  get X most recent messages from conversation Y
   ::  -  get X most recent messages each from Y most recently active conversations
   ::  -  get all messages in conversation X between id Y and id Z
-  ::  -  get all conversations
-  ::  -  search conversation for keyword in message
-  ::  -  search all conversations for keyword is any message
   ::  -  get all mentions between date X and now
   ::  -  get single message with id X in conversation Y
-  ::
   ::
   ::  get all conversations and get unread count + most recent message
   ::
@@ -762,13 +757,13 @@
     ^-  (list conversation-info)
     %+  turn
       ::  only get undeleted conversation
-      -:(q:db.state [%select %conversations where=[%s %deleted %& %eq %.n]])
+      -:(q:db.state %pongo [%select %conversations where=[%s %deleted %& %eq %.n]])
     |=  =row:nectar
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])
     =/  last-message=(unit message)
       =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
-      (q:db.state [%select messages-table-id.convo where=[%s %id %& %bottom 1]])
+      (q:db.state %pongo [%select messages-table-id.convo where=[%s %id %& %bottom 1]])
     :+  convo
       last-message
     ?~  last-message  0
@@ -786,7 +781,31 @@
     ?~  convo=(fetch-conversation convo-id)
       ~
     %+  turn
-      -:(q:db.state [%select messages-table-id.u.convo where=[%n ~]])
+      -:(q:db.state %pongo [%select messages-table-id.u.convo where=[%n ~]])
+    |=  =row:nectar
+    !<(message [-:!>(*message) row])
+  ::
+  ::  get X most recent messages from conversation Y
+  ::
+      [%x %recent-messages @ @ ~]
+    =/  convo-id  (slav %ux i.t.t.path)
+    =/  amount  (slav %ud i.t.t.t.path)
+    ~&  >  "pongo: fetching {<amount>} most recent messages from {<convo-id>}"
+    ~>  %bout
+    =-  ``pongo-update+!>([%message-list -])
+    ^-  (list message)
+    ?~  convo=(fetch-conversation convo-id)  ~
+    =/  last-message=(unit message)
+      =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
+      (q:db.state %pongo [%select messages-table-id.u.convo where=[%s %id %& %bottom 1]])
+    ?~  last-message  ~
+    =/  get-after
+      ?:  (gth amount id.u.last-message)  0
+      +((sub id.u.last-message amount))
+    %+  turn
+      =<  -
+      %+  q:db.state  %pongo
+      [%select messages-table-id.u.convo where=[%s %id %& %gte get-after]]
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ::
@@ -800,12 +819,12 @@
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  -:(q:db.state [%select %conversations where=[%s %id %& %eq id]])
+  -:(q:db.state %pongo [%select %conversations where=[%s %id %& %eq id]])
 ::
 ++  make-unique-name
   |=  given=@t
   ^-  @t
-  =+  -:(q:db.state [%select %conversations [%s %name %& %eq given]])
+  =+  -:(q:db.state %pongo [%select %conversations [%s %name %& %eq given]])
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::

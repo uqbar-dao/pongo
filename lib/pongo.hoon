@@ -20,9 +20,9 @@
     =<  messages-table-id
     %-  need
     =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-    -:(q:db [%select %conversations where=[%s %id %& %eq (need only-in)]])
+    -:(q:db %pongo [%select %conversations where=[%s %id %& %eq (need only-in)]])
   %+  turn
-    =-  -:(q:db [%select table-id where=-])
+    =-  -:(q:db %pongo [%select table-id where=-])
     =+  [%s %content %& %text-find (trip phrase)]
     ?~  only-author  -
     [%and [%s %author %& %eq u.only-author] -]
