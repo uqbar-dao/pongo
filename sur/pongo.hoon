@@ -122,7 +122,7 @@
       [%edit =conversation-id on=message-id edit=@t]
       [%react =conversation-id on=message-id =reaction]
       ::  these are only sent when conversation size is below cutoff
-      [%delivered hash=@uvH]
+      [%delivered =conversation-id hash=@uvH]
       ::  these are sent to anyone
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept
@@ -173,8 +173,8 @@
       [%edited =conversation-id on=message-id edit=@t]          ::  new edit
       [%reacted =conversation-id on=message-id =reaction]       ::  new reacc
       [%invite conversation]                                    ::  new invite
-      [%sending identifier=@t]
-      [%delivered identifier=@t]
+      [%sending =conversation-id identifier=@t]
+      [%delivered =conversation-id identifier=@t]
       [%search-result (list [=conversation-id =message])]
       $:  %invites
           sent=(jug conversation-id @p)

@@ -160,8 +160,7 @@
     ^-  json
     ?-    -.upd
         %conversations
-      %+  frond
-        'conversations'
+      %+  frond  'conversations'
       %-  pairs
       %+  turn  +.upd
       |=  ci=conversation-info
@@ -174,24 +173,21 @@
       ==
     ::
         %message-list
-      %+  frond
-        'message_list'
+      %+  frond  'message_list'
       :-  %a
       %+  turn  +.upd
       |=  =message
       (message-to-json:parsing message ~)
     ::
         %message
-      %+  frond
-        'message'
+      %+  frond  'message'
       %-  pairs
       :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
           ['message' (message-to-json:parsing message.upd ~)]
       ==
     ::
         %edited
-      %+  frond
-        'message'
+      %+  frond  'message'
       %-  pairs
       :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
           ['on' s+(scot %ud on.upd)]
@@ -199,8 +195,7 @@
       ==
     ::
         %reacted
-      %+  frond
-        'message'
+      %+  frond  'message'
       %-  pairs
       :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
           ['on' s+(scot %ud on.upd)]
@@ -208,27 +203,32 @@
       ==
     ::
         %invite
-      %+  frond
-        'invite'
+      %+  frond  'invite'
       (conversation-to-json:parsing +.upd)
     ::
         %sending
-      (frond 'sending' s+identifier.upd)
+      %+  frond  'sending'
+      %-  pairs
+      :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
+          ['identifier' s+identifier.upd]
+      ==
     ::
         %delivered
-      (frond 'delivered' s+identifier.upd)
+      %+  frond  'delivered'
+      %-  pairs
+      :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
+          ['identifier' s+identifier.upd]
+      ==
     ::
         %search-result
-      %+  frond
-        'search_result'
+      %+  frond  'search_result'
       :-  %a
       %+  turn  +.upd
       |=  [c=conversation-id =message]
       (message-to-json:parsing message `c)
     ::
         %invites
-      %+  frond
-        'invites'
+      %+  frond  'invites'
       %-  pairs
       :~  :-  'sent'
           ^-  json

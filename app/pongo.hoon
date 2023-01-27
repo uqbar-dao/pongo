@@ -127,7 +127,7 @@
     ?~  want.u.has
       :-  ?:  =('' fe-id.u.has)  ~
           ~&  "message delivered."
-          (give-update [%delivered fe-id.u.has])^~
+          (give-update [%delivered conversation-id.ping fe-id.u.has])^~
       state(undelivered (~(del by undelivered.state) hash.ping))
     `state(undelivered (~(put by undelivered.state) hash.ping u.has))
   =/  cid=conversation-id
@@ -186,7 +186,7 @@
       ::  we *do* send delivered receipts to those we have blocked.
       ?.  =(%member-remove kind.message)
         :_  state
-        (delivered-card author.message message-hash)^~
+        (delivered-card author.message id.convo message-hash)^~
       =.  db.state
         %+  update-rows:db.state
           %conversations
@@ -266,7 +266,7 @@
     %+  weld
       ?.  (lte kind.message my-special-number)
         (give-update [%message id.convo message])^~
-      :~  (delivered-card author.message message-hash)
+      :~  (delivered-card author.message id.convo message-hash)
           (give-update [%message id.convo message])
       ==
     ?+  kind.message  ~
@@ -552,7 +552,7 @@
       :~  %+  ~(poke pass:io /send-message)
             [router.u.convo %pongo]
           ping+!>(`ping`[%message routed=| conversation-id.action message])
-          (give-update [%sending identifier.action])
+          (give-update [%sending id.u.convo identifier.action])
       ==
     ?.  ?=(%member-remove kind.message)        ~
     ?.  =(our.bowl (slav %p content.message))  ~
@@ -817,11 +817,11 @@
   ==
 ::
 ++  delivered-card
-  |=  [author=@p hash=@uvH]
+  |=  [author=@p convo=@ux hash=@uvH]
   ^-  card
   %+  ~(poke pass:io /delivered)
     [author %pongo]
-  ping+!>(`ping`[%delivered hash])
+  ping+!>(`ping`[%delivered convo hash])
 ::
 ++  give-update
   |=  upd=pongo-update
