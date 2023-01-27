@@ -213,14 +213,10 @@
       (conversation-to-json:parsing +.upd)
     ::
         %sending
-      %+  frond
-        'sending'
-      (sect +.upd)
+      (frond 'sending' s+identifier.upd)
     ::
         %delivered
-      %+  frond
-        'delivered'
-      (sect +.upd)
+      (frond 'delivered' s+identifier.upd)
     ::
         %search-result
       %+  frond

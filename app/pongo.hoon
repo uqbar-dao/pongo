@@ -19,7 +19,7 @@
       blocked=(set @p)
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
-      undelivered=(map @uvH [message want=(set @p)])  ::  keyed by hash
+      undelivered=(map @uvH [message fe-id=@t want=(set @p)])
       ::  %posse-linked conversation tracking
       tagged=(map tag:s conversation-id)
   ==
@@ -125,8 +125,9 @@
       `state
     =.  want.u.has  (~(del in want.u.has) src.bowl)
     ?~  want.u.has
-      ~&  "message delivered."
-      :-  (give-update [%delivered timestamp.u.has])^~
+      :-  ?:  =('' fe-id.u.has)  ~
+          ~&  "message delivered."
+          (give-update [%delivered fe-id.u.has])^~
       state(undelivered (~(del by undelivered.state) hash.ping))
     `state(undelivered (~(put by undelivered.state) hash.ping u.has))
   =/  cid=conversation-id
@@ -523,7 +524,7 @@
         [%s %id %& %eq conversation-id.action]
       ~[[%deleted |=(v=value:nectar %.y)]]
     =-  $(action `^action`[%send-message -])
-    [conversation-id.action %member-remove (scot %p our.bowl) ~]
+    ['' conversation-id.action %member-remove (scot %p our.bowl) ~]
   ::
       %send-message
     ::  create a message and send to a conversation we're in
@@ -546,12 +547,12 @@
     :_  ?:  (lte delivery-tracking-cutoff ~(wyt in members.p.meta.u.convo))
           state
         =-  state(undelivered (~(put by undelivered.state) hash -))
-        [message (~(del in members.p.meta.u.convo) our.bowl)]
-    %+  weld
-      :~  (give-update [%sending now.bowl])
-          %+  ~(poke pass:io /send-message)
+        [message identifier.action (~(del in members.p.meta.u.convo) our.bowl)]
+    %+  welp
+      :~  %+  ~(poke pass:io /send-message)
             [router.u.convo %pongo]
           ping+!>(`ping`[%message routed=| conversation-id.action message])
+          (give-update [%sending identifier.action])
       ==
     ?.  ?=(%member-remove kind.message)        ~
     ?.  =(our.bowl (slav %p content.message))  ~
@@ -727,7 +728,7 @@
       [our.bowl %pongo]
     :-  %pongo-action
     !>  ^-  action
-    [%send-message id.convo %member-remove (scot %p +.to.q.update) ~]
+    [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~]
   ==
 ::
 ++  handle-scry

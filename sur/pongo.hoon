@@ -138,6 +138,7 @@
       [%leave-conversation =conversation-id]
       ::
       $:  %send-message
+          identifier=@t
           =conversation-id
           =message-kind
           content=@t
@@ -169,11 +170,11 @@
   $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
       [%message =conversation-id =message]  ::  tell frontend about new message
-      [%edited =conversation-id on=message-id edit=@t]
-      [%reacted =conversation-id on=message-id =reaction]
-      [%invite conversation]                ::                      new invite
-      [%sending @da]    ::  tell frontend we're sending a message at this time
-      [%delivered @da]  ::                that message sent at @da was delivered
+      [%edited =conversation-id on=message-id edit=@t]          ::  new edit
+      [%reacted =conversation-id on=message-id =reaction]       ::  new reacc
+      [%invite conversation]                                    ::  new invite
+      [%sending identifier=@t]
+      [%delivered identifier=@t]
       [%search-result (list [=conversation-id =message])]
       $:  %invites
           sent=(jug conversation-id @p)

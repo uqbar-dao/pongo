@@ -20,7 +20,8 @@
         ::
         :-  %send-message
         %-  ot
-        :~  [%convo (se %ux)]
+        :~  [%identifier so]
+            [%convo (se %ux)]
             [%kind (se %tas)]
             [%content so]
             ::  doesn't want dots
