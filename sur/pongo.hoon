@@ -127,6 +127,10 @@
       [%invite =conversation]            ::  person creating the invite sends
       [%accept-invite =conversation-id]  ::  %member-add message upon accept
       [%reject-invite =conversation-id]
+      ::  this allows any ship to request to join *free-for-all* convos
+      ::  if they know the convo ID and the @p of a member ship.
+      ::  app is tuned to automatically accept these, can be turned off.
+      [%invite-request =conversation-id]
   ==
 ::
 ::  pokes that our frontend performs:
@@ -152,6 +156,7 @@
       [%make-invite to=@p =conversation-id]
       [%accept-invite =conversation-id]
       [%reject-invite =conversation-id]
+      [%make-invite-request to=@p =conversation-id]  ::  FFA convos only!
       ::
       [%block who=@p]
       [%unblock who=@p]
@@ -170,8 +175,8 @@
   $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
       [%message =conversation-id =message]  ::  tell frontend about new message
-      [%edited =conversation-id on=message-id edit=@t]          ::  new edit
-      [%reacted =conversation-id on=message-id =reaction]       ::  new reacc
+      ::  [%edited =conversation-id on=message-id edit=@t]
+      ::  [%reacted =conversation-id on=message-id =reaction]
       [%invite conversation]                                    ::  new invite
       [%sending =conversation-id identifier=@t]
       [%delivered =conversation-id identifier=@t]

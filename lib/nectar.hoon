@@ -36,7 +36,7 @@
     ?+  -.query
       [(get-rows:- +):(run-query app query ~) +>.$]
     ::
-      %update        `(update app query)
+      %update        (update app query)
       %insert        `(insert-rows app^table.query rows.query)
       %delete        `(delete app^table.query where.query)
       %add-table     `(add-table app^name.query actual.query)
@@ -90,12 +90,12 @@
   ::
   ++  update
     |=  [app=@tas =query]
-    ^+  database
+    ^-  (quip row _database)
     ?>  ?=(%update -.query)
     =/  tab=_tab  (~(got by tables) app^table.query)
-    =-  +>.$(tables -)
-    %+  ~(put by tables)  app^table.query
-    (update:tab primary-key.table:tab where.query cols.query)
+    =^  rows  tab
+      (update:tab primary-key.table:tab where.query cols.query)
+    [rows +>.$(tables (~(put by tables) app^table.query tab))]
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
   ::
@@ -349,6 +349,7 @@
   ::
   ++  select
     |=  [at-key=(list term) where=condition]
+    ^+  tab
     ::  ~&  >  "%nectar: performing select"
     ::  ~>  %bout
     =?    at-key
@@ -542,6 +543,7 @@
   ::
   ++  insert
     |=  [rows=(list row) update=?]
+    ^+  tab
     ::  ~&  >  "%nectar: performing insert/update"
     ::  ~>  %bout
     =.  records.table
@@ -618,6 +620,7 @@
   ::
   ++  delete
     |=  [at-key=(list term) where=condition]
+    ^+  tab
     ::  ~&  >  "%nectar: performing delete"
     ::  ~>  %bout
     =?    at-key
@@ -652,6 +655,7 @@
   ::
   ++  update
     |=  [at-key=(list term) where=condition cols=(list [term $-(value value)])]
+    ^-  (quip row _tab)
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -661,7 +665,7 @@
       |=  [=term func=$-(value value)]
       :-  spot:(~(got by schema.table) term)
       func
-    %+  insert
+    =/  new-rows
       %+  turn
         `(list row)`(get-rows:(select at-key where) at-key)
       |=  =row
@@ -671,13 +675,14 @@
       :_  +(i)
       ?~  c=(~(get by col-spots) i)  value
       (u.c value)
-    update=&
+    [new-rows (insert new-rows update=&)]
   ::
   ::  produces a list of rows along with a schema for interpreting
   ::  those rows, since projection creates a new row-ordering
   ::
   ++  project
     |=  [at-key=(list term) cols=(list term)]
+    ^+  tab
     ::  ~&  >  "%nectar: performing projection"
     ::  ~>  %bout
     ::  need to iterate through all rows, so no need
@@ -714,6 +719,7 @@
   ::
   ++  cross
     |=  [at-key=(list term) new-key=key-type with=(pair schema (list row))]
+    ^+  tab
     ::  ~&  >  "%nectar: performing cross-product"
     ::  ~>  %bout
     =/  l  ~(wyt by schema.table)

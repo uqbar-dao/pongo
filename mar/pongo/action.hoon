@@ -38,6 +38,7 @@
         [%make-invite (ot ~[[%to (se %p)] [%id (se %ux)]])]
         [%accept-invite (ot ~[[%id (se %ux)]])]
         [%reject-invite (ot ~[[%id (se %ux)]])]
+        [%make-invite-request (ot ~[[%to (se %p)] [%id (se %ux)]])]
         [%block (ot ~[[%who (se %p)]])]
         [%unblock (ot ~[[%who (se %p)]])]
         ::

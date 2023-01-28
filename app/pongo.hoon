@@ -9,8 +9,9 @@
 ::  if the conversation has this many members or less,
 ::  we'll track delivery to each recipient.
 ++  delivery-tracking-cutoff  5
-::  arbitrary limit
+::  arbitrary limits for some measure of performance guarantees
 ++  message-length-limit      1.024
+++  member-count-limit        100  ::  TODO implement
 ::
 ::  %pongo agent state
 ::
@@ -136,7 +137,7 @@
       %invite                           id.conversation.ping
       %message                          conversation-id.ping
       ?(%edit %react)                   conversation-id.ping
-      ?(%accept-invite %reject-invite)  conversation-id.ping
+      ?(%accept-invite %reject-invite %invite-request)  conversation-id.ping
     ==
   =/  conv=(unit conversation)
     ?:  ?=(%invite -.ping)
@@ -290,12 +291,11 @@
     ::
     ~?  !=(our src):bowl
       (print-edit src.bowl ping)
-    =.  db.state
+    =^  edited  db.state
       =+  |=  v=value:nectar
           ^-  value:nectar
           ?>  ?=(@t v)
           edit.ping
-      =<  +
       %+  q:db.state  %pongo
       :*  %update  messages-table-id.convo
           :+  %and
@@ -310,8 +310,10 @@
               [%edited |=(v=value:nectar `value:nectar`%.y)]
           ==
       ==
+    ?~  edited  `state
     :_  state  :_  ~
-    (give-update [%edited id.convo [on edit]:ping])
+    %-  give-update
+    [%message id.convo !<(message [-:!>(*message) (head edited)])]
   ::
       %react
     ::  we've received a new message reaction
@@ -325,20 +327,21 @@
     ::
     ~?  !=(our src):bowl
       (print-reaction src.bowl ping)
-    =.  db.state
+    =^  reacted  db.state
       =+  |=  v=value:nectar
           ^-  value:nectar
           ?>  ?=(^ v)
           ?>  ?=(%j -.v)
           j+(~(put ju p.v) reaction.ping src.bowl)
-      =<  +
       %+  q:db.state  %pongo
       :^    %update
           messages-table-id.convo
         [%s %id %& %eq on.ping]
       ~[[%reactions -]]
+    ?~  reacted  `state
     :_  state  :_  ~
-    (give-update [%reacted id.convo [on reaction]:ping])
+    %-  give-update
+    [%message id.convo !<(message [-:!>(*message) (head reacted)])]
   ::
       %invite
     ::  we've received an invite to a conversation
@@ -384,6 +387,20 @@
     ::  an invite we sent has been rejected
     ~&  >>  "%pongo: {<src.bowl>} rejected invite to conversation {<cid>}"
     `state(invites-sent (~(del ju invites-sent.state) cid src.bowl))
+  ::
+      %invite-request
+    ::  someone wants to join one of our conversations
+    ::  if we don't have ID, or convo is not FFA, reject
+    ::  otherwise send them an invite
+    ?:  (~(has in blocked.state) src.bowl)
+      ::  ignore requests from blocked ships
+      `state
+    ?>  ?=(%free-for-all -.p.meta.convo)
+    :_  state(invites-sent (~(put ju invites-sent.state) id.convo src.bowl))
+    :_  ~
+    %+  ~(poke pass:io /send-invite)
+      [src.bowl %pongo]
+    ping+!>(`^ping`[%invite convo])
   ==
 ::
 ++  handle-action
@@ -665,6 +682,13 @@
       [from.u.invite %pongo]
     ping+!>(`ping`[%reject-invite conversation-id.action])
   ::
+      %make-invite-request
+    ::  try to join a public conversation off id and existing member
+    :_  state  :_  ~
+    %+  ~(poke pass:io /request-invite)
+      [to.action %pongo]
+    ping+!>(`ping`[%invite-request conversation-id.action])
+  ::
       %block
     ::  add a ship to our block-list, they cannot message us or invite us
     `state(blocked (~(put in blocked.state) who.action))
@@ -785,27 +809,31 @@
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ::
-  ::  get X most recent messages from conversation Y
+  ::  /messages/[convo-id]/[msg-id]/[num-before]/[num-after]
   ::
-      [%x %recent-messages @ @ ~]
-    =/  convo-id  (slav %ux i.t.t.path)
-    =/  amount  (slav %ud i.t.t.t.path)
-    ~&  >  "pongo: fetching {<amount>} most recent messages from {<convo-id>}"
+      [%x %messages @ @ @ @ ~]
+    =/  convo-id    (slav %ux i.t.t.path)
+    =/  message-id  (slav %ud i.t.t.t.path)
+    =/  num-before  (slav %ud i.t.t.t.t.path)
+    =/  num-after   (slav %ud i.t.t.t.t.t.path)
+    =/  start=@ud
+      ?:  (gth num-before message-id)  0
+        (sub message-id num-before)
+    =/  end=@ud
+      (add message-id num-after)
+    ~&  >
+    "pongo: fetching messages from {<convo-id>} with ids {<start>}-{<end>}"
     ~>  %bout
     =-  ``pongo-update+!>([%message-list -])
     ^-  (list message)
     ?~  convo=(fetch-conversation convo-id)  ~
-    =/  last-message=(unit message)
-      =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
-      (q:db.state %pongo [%select messages-table-id.u.convo where=[%s %id %& %bottom 1]])
-    ?~  last-message  ~
-    =/  get-after
-      ?:  (gth amount id.u.last-message)  0
-      +((sub id.u.last-message amount))
     %+  turn
       =<  -
       %+  q:db.state  %pongo
-      [%select messages-table-id.u.convo where=[%s %id %& %gte get-after]]
+      :+  %select  messages-table-id.u.convo
+      :+  %and
+        [%s %id %& %gte start]
+      [%s %id %& %lte end]
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ::

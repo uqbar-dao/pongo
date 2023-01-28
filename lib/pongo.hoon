@@ -186,22 +186,6 @@
           ['message' (message-to-json:parsing message.upd ~)]
       ==
     ::
-        %edited
-      %+  frond  'message'
-      %-  pairs
-      :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
-          ['on' s+(scot %ud on.upd)]
-          ['edit' s+edit.upd]
-      ==
-    ::
-        %reacted
-      %+  frond  'message'
-      %-  pairs
-      :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
-          ['on' s+(scot %ud on.upd)]
-          ['reaction' s+reaction.upd]
-      ==
-    ::
         %invite
       %+  frond  'invite'
       (conversation-to-json:parsing +.upd)
