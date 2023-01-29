@@ -117,10 +117,9 @@
 ::  messages are sent to router, who then pokes all members
 ::
 +$  ping
-  $%  ::  these are sent to / received from router
-      [%message routed=? =conversation-id =message]
-      [%edit =conversation-id on=message-id edit=@t]
-      [%react =conversation-id on=message-id =reaction]
+  $%  [%message routed=? =conversation-id =message]  ::  sent thru router
+      [%edit =conversation-id on=message-id edit=@t]  ::  sent direct
+      [%react =conversation-id on=message-id =reaction]  ::  sent direct
       ::  these are only sent when conversation size is below cutoff
       [%delivered =conversation-id hash=@uvH]
       ::  these are sent to anyone
