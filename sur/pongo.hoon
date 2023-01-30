@@ -52,8 +52,8 @@
 +$  message-kind
   $?  %text  %code
       ::  in these kinds, message content is a `@t`(scot %p @p)
-      %member-add     ::  in FFA, anyone can send this, otherwise only leaders
-      %member-remove  ::  in FFA, only member leaving can send
+      %member-add     ::  in %open, anyone can send this, otherwise only leaders
+      %member-remove  ::  in %open, only member leaving can send
       %change-name
       %leader-add     ::  only for %many-leader
       %leader-remove  ::  only for %many-leader
@@ -73,10 +73,11 @@
       [%messages-table-id [[1 | %ux]]]
       [%name [2 | %t]]
       [%last-active [3 | %da]]
-      [%last-read [4 | %ud]]  ::  id of message we last saw
-      [%router [5 | %p]]
-      [%members [6 | %blob]]
-      [%deleted [7 | %f]]
+      [%last-message [4 | %ud]]
+      [%last-read [5 | %ud]]  ::  id of message we last saw
+      [%router [6 | %p]]
+      [%members [7 | %blob]]
+      [%deleted [8 | %f]]
   ==
 ::
 ++  conversations-indices
@@ -88,9 +89,8 @@
 ::  used to mold the blob inside schema
 ::
 +$  conversation-metadata
-  $%  [%single-leader members=(set @p) leader=@p]
-      [%many-leader members=(set @p) leaders=(set @p)]
-      [%free-for-all members=(set @p) ~]  ::  hate this ~
+  $%  [%managed members=(set @p) leaders=(set @p)]
+      [%open members=(set @p) ~]  ::  hate this ~
   ==
 ::
 ::  a conversation id is constructed by hashing the concatenation
@@ -106,6 +106,7 @@
       messages-table-id=@ux
       name=@t
       last-active=@da
+      last-message=message-id
       last-read=message-id
       router=@p
       meta=[%b p=conversation-metadata]
@@ -130,6 +131,11 @@
       ::  if they know the convo ID and the @p of a member ship.
       ::  app is tuned to automatically accept these, can be turned off.
       [%invite-request =conversation-id]
+  ==
+::
++$  pending-ping
+  $%  [%edit src=@p edit=@t]
+      [%react src=@p =reaction]
   ==
 ::
 ::  pokes that our frontend performs:
@@ -188,7 +194,7 @@
 ::
 +$  conversation-info
   $:  conversation
-      last-message=(unit message)
+      last=(unit message)
       unreads=@ud
   ==
 --

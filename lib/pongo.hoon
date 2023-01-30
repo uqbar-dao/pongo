@@ -146,12 +146,9 @@
         ::  don't share router node
         ['members' a+(turn ~(tap in members.p.meta.c) ship)]
         :-  'leaders'
-        ?-    -.p.meta.c
-            %free-for-all   ~
-            %single-leader  (ship leader.p.meta.c)
-            %many-leader
-          :-  %a
-          (turn ~(tap in leaders.p.meta.c) ship)
+        ?-  -.p.meta.c
+          %open     ~
+          %managed  a+(turn ~(tap in leaders.p.meta.c) ship)
         ==
     ==
   ::
@@ -169,7 +166,7 @@
       :~  ['conversation' (conversation-to-json -.ci)]
           ['unreads' (numb unreads.ci)]
           :-  'last_message'
-          ?~(last-message.ci ~ (message-to-json:parsing u.last-message.ci ~))
+          ?~(last.ci ~ (message-to-json:parsing u.last.ci ~))
       ==
     ::
         %message-list

@@ -55,9 +55,8 @@
     ++  parse-config
       ::  %-  conversation-metadata:p
       %-  of
-      :~  [%single-leader (ot ~[[%members (as (se %p))] [%leader (se %p)]])]
-          [%many-leader (ot ~[[%members (as (se %p))] [%leaders (as (se %p))]])]
-          [%free-for-all (ot ~[[%members (as (se %p))]])]
+      :~  [%managed (ot ~[[%members (as (se %p))] [%leaders (as (se %p))]])]
+          [%open (ot ~[[%members (as (se %p))]])]
       ==
     --
   --

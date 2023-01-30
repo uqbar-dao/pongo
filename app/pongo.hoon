@@ -4,7 +4,7 @@
 |%
 ::
 ::  pongo is currently tuned to auto-accept invites to new conversations.
-::  it's also set up to automatically allow ships to join a *free-for-all*
+::  it's also set up to automatically allow ships to join an *open*
 ::  conversation if they have the ID.
 ::  these can be turned off with a few small changes.
 ::
@@ -18,13 +18,16 @@
 ::  %pongo agent state
 ::
 +$  state
-  $:  db=_database:nectar
+  $:  ::  "deep state"
+      db=_database:nectar
+      tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
+      ::  "configuration state"
       blocked=(set @p)
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
+      ::  "ephemeral state"
       undelivered=(map @uvH [message fe-id=@t want=(set @p)])
-      ::  %posse-linked conversation tracking
-      tagged=(map tag:s conversation-id)
+      pending-pings=(jar [conversation-id message-id] pending-ping)
   ==
 +$  card  card:agent:gall
 --
@@ -40,7 +43,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ ~ ~ ~]
+      :_  [~ ~ ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
       ^-  table:nectar
@@ -154,9 +157,6 @@
       ~&  >>>  "%pongo: rejecting message, invalid signature"  `state
     ?.  (~(has in members.p.meta.convo) author.message)
       ~&  >>>  "%pongo: rejecting message from non-member"  `state
-    ::
-    ::  TODO: refactor entire below
-    ::
     ?:  (~(has in blocked.state) author.message)
       ::  ignore any messages from blocked ships unless
       ::  it's them leaving the conversation!
@@ -164,103 +164,79 @@
       ?.  =(%member-remove kind.message)
         [(delivered-card author.message id.convo message-hash)^~ state]
       =.  db.state
-        %+  update-rows:db.state
-          %pongo^%conversations
-        :_  ~
-        convo(members.p.meta (~(del in members.p.meta.convo) author.message))
-      :_  state
-      (graph-del-tag author.message name.convo)^~
-    ?:  ?&  ?=(%member-remove kind.message)
-            !(valid-removal message convo)
-        ==
-      ::  reject invalid removals!
-      `state
-    =.  timestamp.message  now.bowl
+        %+  update-rows:db.state  %pongo^%conversations
+        ~[convo(members.p.meta (~(del in members.p.meta.convo) author.message))]
+      [(graph-del-tag author.message name.convo)^~ state]
+    ::
+    ::  enforce that convo name changes, member adds/removes, and leader
+    ::  adds/removes follow the rules of this conversation (open/managed)
+    ::
+    ?.  (valid-message-contents message convo)
+      ~&  >>>  "%pongo: rejecting message {<message>}"
+      `state  ::  TODO crash here?
+    =.  timestamp.message   now.bowl
+    =.  last-active.convo   now.bowl
+    =.  last-message.convo  id.message
+    =^  cards  convo
+      ?-    kind.message
+          ?(%text %code)
+        ::  normal message
+        `convo
+      ::
+          %member-add
+        =.  members.p.meta.convo
+          (~(put in members.p.meta.convo) (slav %p content.message))
+        :_  convo
+        (graph-add-tag (slav %p content.message) name.convo)^~
+      ::
+          %member-remove
+        =+  them=(slav %p content.message)
+        =.  members.p.meta.convo
+          (~(del in members.p.meta.convo) them)
+        ?:  =(our.bowl them)
+          [(graph-nuke-tag name.convo)^~ convo(deleted %.y)]
+        [(graph-del-tag them name.convo)^~ convo]
+      ::
+          %change-name
+        `convo(name content.message)
+      ::
+          %leader-add
+        ?>  ?=(%managed -.p.meta.convo)
+        =.  leaders.p.meta.convo
+          (~(put in leaders.p.meta.convo) (slav %p content.message))
+        `convo
+      ::
+          %leader-remove
+        ?>  ?=(%managed -.p.meta.convo)
+        =.  leaders.p.meta.convo
+          (~(del in leaders.p.meta.convo) (slav %p content.message))
+        `convo
+      ::
+          %change-router  !!  ::  TBD
+      ==
+    ::  if we have pending edits/reactions to message, apply them now
+    =.  message  (apply-pending-pings message id.convo)
     ~?  ?|  !=(our.bowl author.message)
             ?=(?(%member-add %change-name) kind.message)
         ==
       (print-message message)
-    ::  if the message kind is a member or leader set edit,
-    ::  we update our conversation to reflect it -- only
-    ::  if message was sent by someone allowed to do it
-    ::  TODO clean up this garbage logic
     =.  db.state
-      =-  (update-rows:db.state %pongo^%conversations -)
-      :_  ~
-      ^-  conversation
-      =.  last-active.convo  now.bowl
-      ?.  ?&  ?=  $?  %member-add  %member-remove
-                      %leader-add  %leader-remove
-                      %change-name
-                  ==
-              kind.message
-              ?-  -.p.meta.convo
-                %free-for-all  %.y
-                  %single-leader
-                ?|  =(author.message leader.p.meta.convo)
-                    ?&  ?=(%member-remove kind.message)
-                        =(author.message (slav %p content.message))
-                ==  ==
-                  %many-leader
-                ?|  (~(has in leaders.p.meta.convo) author.message)
-                    ?&  ?=(%member-remove kind.message)
-                        =(author.message (slav %p content.message))
-                ==  ==
-          ==  ==
-        convo
-      =?    members.p.meta.convo
-          ?=(?(%member-add %member-remove) kind.message)
-        ?-  kind.message
-            %member-add
-          (~(put in members.p.meta.convo) (slav %p content.message))
-            %member-remove
-          (~(del in members.p.meta.convo) (slav %p content.message))
-        ==
-      =?    name.convo
-          ?=(%change-name kind.message)
-        content.message
-      =?    deleted.convo
-          ?&  ?=(%member-remove kind.message)
-              (valid-removal message convo)
-          ==
-        %.y
-      ?+    -.p.meta.convo  convo
-          %many-leader
-        %=    convo
-            leaders.p.meta
-          ?+    kind.message  leaders.p.meta.convo
-              %leader-add
-            (~(put in leaders.p.meta.convo) (slav %p content.message))
-              %leader-remove
-            (~(del in leaders.p.meta.convo) (slav %p content.message))
-          ==
-        ==
-      ==
+      (update-rows:db.state %pongo^%conversations ~[convo])
     =.  db.state
       (insert-rows:db.state %pongo^messages-table-id.convo ~[message])
     :_  state
-    %+  weld
-      ?.  (lte kind.message my-special-number)
-        (give-update [%message id.convo message])^~
-      :~  (delivered-card author.message id.convo message-hash)
-          (give-update [%message id.convo message])
-      ==
-    ?+  kind.message  ~
-        %member-add
-      (graph-add-tag (slav %p content.message) name.convo)^~
-        %member-remove
-      ?:  =(our.bowl (slav %p content.message))
-        (graph-nuke-tag name.convo)^~
-      (graph-del-tag (slav %p content.message) name.convo)^~
+    %+  weld  cards
+    :~  (delivered-card author.message id.convo message-hash)
+        (give-update [%message id.convo message])
     ==
   ::
       %edit
     ::  we've received an edit of a message
     ?.  (~(has in members.p.meta.convo) src.bowl)
       ~&  >>>  "%pongo: rejecting edit"  `state
-    ::
-    ::  TODO: implement a waiting feature for edits to message IDs
-    ::  which we haven't received yet!!!
+    ?:  (gth on.ping last-message.convo)
+      =+  [[id.convo on.ping] [%edit src.bowl edit.ping]]
+      `state(pending-pings (~(add ja pending-pings.state) -))
     ::
     =^  edited  db.state
       =*  v  value:nectar
@@ -282,9 +258,9 @@
     ::  we've received a new message reaction
     ?.  (~(has in members.p.meta.convo) src.bowl)
       ~&  >>>  "%pongo: rejecting reaction"  `state
-    ::
-    ::  TODO: implement a waiting feature for reacts to message IDs
-    ::  which we haven't received yet!!!
+    ?:  (gth on.ping last-message.convo)
+      =+  [[id.convo on.ping] [%react src.bowl reaction.ping]]
+      `state(pending-pings (~(add ja pending-pings.state) -))
     ::
     ~?  !=(our src):bowl  (print-reaction src.bowl ping)
     =^  reacted  db.state
@@ -345,11 +321,79 @@
     ::  otherwise send them an invite! (can remove this)
     ::  ignore requests from blocked ships
     ?:  (~(has in blocked.state) src.bowl)  `state
-    ?>  ?=(%free-for-all -.p.meta.convo)
+    ?>  ?=(%open -.p.meta.convo)
     :_  state(invites-sent (~(put ju invites-sent.state) id.convo src.bowl))
     :_  ~
     %+  ~(poke pass:io /send-invite)  [src.bowl %pongo]
     ping+!>(`^ping`[%invite convo])
+  ==
+::
+++  route-message
+  |=  [convo=conversation m=message]
+  ^-  (list card)
+  ::  assign ordering to message here by getting id of most recent message
+  =.  id.m  +(last-message.convo)
+  %+  turn  ~(tap in members.p.meta.convo)
+  |=  to=@p
+  %+  ~(poke pass:io /route-message)  [to %pongo]
+  ping+!>(`ping`[%message routed=& id.convo m])
+::
+++  apply-pending-pings
+  |=  [=message cid=conversation-id]
+  ^+  message
+  =/  pending=(list pending-ping)
+    %-  flop  ::  want to apply newest last
+    (~(get ju pending-pings.state) [cid id.message])
+  |-
+  ?~  pending  message
+  =.  message
+    ?-    -.i.pending
+        %edit
+      ?.  =(src.i.pending author.message)  message
+      message(edited %.y, content edit.i.pending)
+        %react
+      =+  [reaction.i.pending src.i.pending]
+      message(p.reactions (~(put ju p.reactions.message) -))
+    ==
+  $(pending t.pending)
+::
+++  valid-message-contents
+  |=  [=message convo=conversation]
+  ^-  ?
+  ?.  =(id.message +(last-message.convo))  %.n
+  ?-    kind.message
+    ?(%text %code)  %.y
+  ::
+      %member-remove
+    ?:  =(author.message (slav %p content.message))  %.y
+    ?-  -.p.meta.convo
+      %open     %.n
+      %managed  (~(has in leaders.p.meta.convo) author.message)
+    ==
+  ::
+      ?(%member-add %change-name)
+    ?-  -.p.meta.convo
+      %open     %.y
+      %managed  (~(has in leaders.p.meta.convo) author.message)
+    ==
+  ::
+      %leader-add
+    ?-  -.p.meta.convo
+      %open     %.n
+      %managed  (~(has in leaders.p.meta.convo) author.message)
+    ==
+  ::
+      %leader-remove
+    ?-  -.p.meta.convo
+      %open     %.n
+        %managed
+      ?&  (gte ~(wyt in leaders.p.meta.convo) 2)
+          (~(has in leaders.p.meta.convo) author.message)
+      ==
+    ==
+  ::
+      %change-router
+    !!  ::  TBD
   ==
 ::
 ++  handle-action
@@ -376,6 +420,7 @@
           messages-table-id=`@ux`(sham id)
           name=(make-unique-name name.action)
           last-active=now.bowl
+          last-message=0
           last-read=0
           router=our.bowl
           [%b config.action(members members.config.action)]
@@ -421,8 +466,8 @@
     ?>  (gth ~(wyt in members) 1)
     =/  config
       ?:  =(our.bowl tag-owner)
-        [%single-leader members our.bowl]
-      [%free-for-all members ~]
+        [%managed members [our.bowl ~ ~]]
+      [%open members ~]
     =^  cards  state
       $(action [%make-conversation name.action config])
     ::  start tracking the tag and automatically
@@ -460,7 +505,7 @@
       ==
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
-    :_  ?:  (lte delivery-tracking-cutoff ~(wyt in members.p.meta.u.convo))
+    :_  ?:  (lth delivery-tracking-cutoff ~(wyt in members.p.meta.u.convo))
           state
         =-  state(undelivered (~(put by undelivered.state) hash -))
         [message identifier.action (~(del in members.p.meta.u.convo) our.bowl)]
@@ -639,8 +684,8 @@
     =/  convo  (need (fetch-conversation cid))
     ?.  ?=(%ship -.to.q.update)                         `state
     ?.  (~(has in members.p.meta.convo) +.to.q.update)  `state
-    ?.  ?=(%single-leader -.p.meta.convo)               `state
-    ?.  =(our.bowl leader.p.meta.convo)                 `state
+    ?.  ?=(%managed -.p.meta.convo)                     `state
+    ?.  (~(has in leaders.p.meta.convo) our.bowl)       `state
     :_  state  :_  ~
     %+  ~(poke pass:io /send-kick-message)
       [our.bowl %pongo]
@@ -672,7 +717,7 @@
     =/  last-message=(unit message)
       =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
       %+  q:db.state  %pongo
-      [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
+      [%select messages-table-id.convo where=[%s %id %& %eq last-message.convo]]
     :+  convo
       last-message
     ?~  last-message  0
@@ -728,22 +773,6 @@
     ``pongo-update+!>([%invites invites-sent.state invites.state])
   ==
 ::
-++  route-message
-  |=  [convo=conversation m=message]
-  ^-  (list card)
-  ::  assign ordering to message here by getting id of most recent message
-  =.  id.m
-    =/  res
-      =<  -
-      %+  q:db.state  %pongo
-      [%select messages-table-id.convo where=[%s %id %& %bottom 1]]
-    ?~  res  0
-    +(id:!<(message [-:!>(*message) (head res)]))
-  %+  turn  ~(tap in members.p.meta.convo)
-  |=  to=@p
-  %+  ~(poke pass:io /route-message)  [to %pongo]
-  ping+!>(`ping`[%message routed=& id.convo m])
-::
 ++  fetch-conversation
   |=  id=conversation-id
   ^-  (unit conversation)
@@ -756,17 +785,6 @@
   =+  -:(q:db.state %pongo [%select %conversations [%s %name %& %eq given]])
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
-::
-++  valid-removal
-  |=  [=message convo=conversation]
-  ^-  ?
-  ?.  =(%member-remove kind.message)  %.n
-  ?:  =(author.message (slav %p content.message))  %.y
-  ?-  -.p.meta.convo
-    %free-for-all  %.n
-    %single-leader  =(author.message leader.p.meta.convo)
-    %many-leader  (~(has in leaders.p.meta.convo) author.message)
-  ==
 ::
 ++  delivered-card
   |=  [author=@p convo=@ux hash=@uvH]
