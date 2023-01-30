@@ -1,5 +1,5 @@
-/-  *posse
-/+  verb, dbug, default-agent,  io=agentio
+/-  *posse, s=social-graph
+/+  verb, dbug, default-agent, io=agentio
 |%
 ::
 ::  posse: contact management system built on top of %social-graph
@@ -11,11 +11,10 @@
 ::
 ::  agent state holds detailed info -- tags held in social-graph
 ::  posse provides a scry path to get detailed info
-::
-::  TODO make a solid-state sub that apps can use to watch a tag
+::  if you want to watch a tag, poke %social-graph directly
 ::
 +$  state
-  $:  contacts=(map @p detail)
+  $:  contacts=(map @p details)
   ==
 +$  card  card:agent:gall
 --
@@ -75,7 +74,8 @@
       :-  %social-graph-edit
       !>([%posse [%del-tag tag.action ship+our.bowl ship+who.action]])
     ::
-        %edit-detail  !!
+        %edit-details
+      `state(contacts (~(put by contacts.state) who.action details.action))
     ::
         %join-posse
       :_  state  :_  ~
@@ -88,5 +88,27 @@
   ++  handle-scry
     |=  =path
     ^-  (unit (unit cage))
-    !!
+    ?+    path  [~ ~]
+        [%x %contact @ ~]
+      ::  return contact details for a given ship
+      =/  who  (slav %p i.t.t.path)
+      ``posse-update+!>(`update`[%details (~(gut by contacts.state) who ~)])
+    ::
+        [%x %tag @ ~]
+      ::  return set of ships with given tag
+      ::  you can also just get this direct from %social-graph
+      =/  tag  `@t`i.t.t.path
+      =/  nodes
+        .^  graph-result:s  %gx
+          %+  weld
+            /(scot %p our.bowl)/social-graph/(scot %da now.bowl)
+          /nodes/posse/ship/(scot %p our.bowl)/[tag]/noun
+        ==
+      ?>  ?=(%nodes -.nodes)
+      ::  filter nodes for only ships
+      =-  ``posse-update+!>(`update`[%tag -])
+      %-  ~(gas in *(set @p))
+      %+  murn  ~(tap in +.nodes)
+      |=(=node:s ?:(?=(%ship -.node) `+.node ~))
+    ==
 --
