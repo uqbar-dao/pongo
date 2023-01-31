@@ -19,7 +19,6 @@
 ::
 +$  state
   $:  ::  "deep state"
-      db=_database:nectar
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
       blocked=(set @p)
@@ -41,16 +40,27 @@
         def   ~(. (default-agent this %|) bowl)
     ::
     ++  on-init
-      =-  `this(state -)
+      :_  this(state *^state)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ ~ ~ ~ ~]
-      %+  add-table:~(. database:nectar ~)
-        %pongo^%conversations
-      ^-  table:nectar
-      :^    (make-schema:nectar conversations-schema)
-          primary-key=~[%id]
-        (make-indices:nectar conversations-indices)
-      ~
+      :~  %+  ~(poke pass:io /init-convo-table)
+            [our.bowl %nectar]
+          =-  nectar-query+!>(pongo+[%add-table %conversations -])
+          ^-  table:nectar
+          :^    (make-schema:nectar conversations-schema)
+              primary-key=~[%id]
+            (make-indices:nectar conversations-indices)
+          ~
+      ::  then, store all the procedures we'll use in %pongo
+          %-  nectar-proc-poke
+          :^  %pongo  %fetch-conversation
+            ~[[%ux 127]]
+          [%select %conversations where=[%s %id %& %eq 0x0]]
+      ::
+          %-  nectar-proc-poke
+          :^  %pongo  %fetch-conversation
+            ~[[%ux 127]]
+          [%select %conversations where=[%s %id %& %eq 0x0]]
+      ==
     ::
     ++  on-save  !>(state)
     ::
@@ -163,10 +173,15 @@
       ::  we *do* send delivered receipts to those we have blocked.
       ?.  =(%member-remove kind.message)
         [(delivered-card author.message id.convo message-hash)^~ state]
-      =.  db.state
-        %+  update-rows:db.state  %pongo^%conversations
+      =/  quer
+        =-  [%update-rows %conversations -]
         ~[convo(members.p.meta (~(del in members.p.meta.convo) author.message))]
-      [(graph-del-tag author.message name.convo)^~ state]
+      :_  state
+      :~  (graph-del-tag author.message name.convo)
+          %+  ~(poke pass:io /update-convo)
+            [our.bowl %nectar]
+          nectar-query+!>(pongo+quer)
+      ==
     ::
     ::  enforce that convo name changes, member adds/removes, and leader
     ::  adds/removes follow the rules of this conversation (open/managed)
@@ -220,14 +235,16 @@
             ?=(?(%member-add %change-name) kind.message)
         ==
       (print-message message)
-    =.  db.state
-      (update-rows:db.state %pongo^%conversations ~[convo])
-    =.  db.state
-      (insert-rows:db.state %pongo^messages-table-id.convo ~[message])
     :_  state
     %+  weld  cards
     :~  (delivered-card author.message id.convo message-hash)
         (give-update [%message id.convo message])
+        %+  ~(poke pass:io /update-convo)
+          [our.bowl %nectar]
+        nectar-query+!>(pongo+[%update-rows %conversations ~[convo]])
+        %+  ~(poke pass:io /update-convo)
+          [our.bowl %nectar]
+        nectar-query+!>(pongo+[%insert-rows messages-table-id.convo ~[message]])
     ==
   ::
       %edit
@@ -773,17 +790,30 @@
     ``pongo-update+!>([%invites invites-sent.state invites.state])
   ==
 ::
+++  nectar-proc-poke
+  |=  =procedure-poke:nectar
+  ^-  card
+  %+  ~(poke pass:io /store-proc)
+    [our.bowl %nectar]
+  nectar-add-procedure+!>(procedure-poke)
+::
 ++  fetch-conversation
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  -:(q:db.state %pongo [%select %conversations where=[%s %id %& %eq id]])
+  .^  (list row:nectar)  %gx
+    (scry:io %nectar /query/pongo/(scot %ux id)/noun)
+  ==
 ::
 ++  make-unique-name
   |=  given=@t
   ^-  @t
-  =+  -:(q:db.state %pongo [%select %conversations [%s %name %& %eq given]])
-  ?:  ?=(~ -)  given
+  =/  rows
+    =+  (jam [%select %conversations [%s %name %& %eq given]])
+    .^  (list row:nectar)  %gx
+      (scry:io %nectar /custom-query/pongo/(scot %ud -)/noun)
+    ==
+  ?:  ?=(~ rows)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::
 ++  delivered-card
