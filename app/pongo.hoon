@@ -699,6 +699,11 @@
   ^-  (unit (unit cage))
   ?+    path  ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
   ::
+  ::  see our blocklist
+  ::
+      [%x %blocklist ~]
+    ``pongo-update+!>([%blocklist blocked.state])
+  ::
   ::  get all conversations and get unread count + most recent message
   ::
       [%x %conversations ~]

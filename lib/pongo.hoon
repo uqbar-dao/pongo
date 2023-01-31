@@ -229,6 +229,10 @@
               ['conversation' (conversation-to-json c.v)]
           ==
       ==
+    ::
+        %blocklist
+      %+  frond  'blocklist'
+      a+(turn ~(tap in +.upd) ship)
     ==
   --
 --

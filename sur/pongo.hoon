@@ -190,6 +190,7 @@
           sent=(jug conversation-id @p)
           rec=(map conversation-id [from=@p =conversation])
       ==
+      [%blocklist (set @p)]
   ==
 ::
 +$  conversation-info
