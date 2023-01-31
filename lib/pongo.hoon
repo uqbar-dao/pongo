@@ -1,6 +1,49 @@
-/-  *pongo
+/-  *pongo, settings
 /+  sig, nectar
 |%
+++  give-push-notification
+  |=  [=conversation-id =message our=ship now=@da]
+  ^-  (unit card:agent:gall)
+  ::  read from settings-store
+    ::
+    =/  pre=path  /(scot %p our)/settings-store/(scot %da now)
+    ::  TODO remove these first two if viable
+    ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))
+      ~
+    ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))
+      ~
+    ::
+    =/  =data:settings
+      .^(data:settings %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
+    ?.  ?=(%entry -.data)  ~
+    ?.  ?=(%s -.val.data)  ~
+    ::  send http request
+    ::
+    =|  =request:http
+    =:  method.request       %'POST'
+        url.request          'https://exp.host/--/api/v2/push/send'
+        header-list.request  ~[['Content-Type' 'application/json']]
+        body.request
+      :-  ~
+      %-  as-octt:mimes:html
+      %-  en-json:html
+      %-  pairs:enjs:format
+      :~  to+s+p.val.data
+          title+s+''
+          body+s+''
+          :-  %data
+          %-  pairs:enjs:format
+          :~  ['ship' s+(scot %p our)]
+              ['conversation_id' s+(scot %ux conversation-id)]
+              ['message_id' s+(scot %ud id.message)]
+          ==
+      ==
+    ==
+    :-  ~
+    :*  %pass  /push-notification/(scot %da now)
+        %arvo  %i  %request
+        request  *outbound-config:iris
+    ==
 ::
 ::  search thread stuff
 ::

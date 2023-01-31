@@ -181,7 +181,9 @@
       ?-    kind.message
           ?(%text %code)
         ::  normal message
-        `convo
+        ?~  ca=(give-push-notification id.convo message [our now]:bowl)
+          `convo
+        [u.ca^~ convo]
       ::
           %member-add
         =.  members.p.meta.convo
@@ -702,14 +704,14 @@
   ::  see our blocklist
   ::
       [%x %blocklist ~]
-    ``pongo-update+!>([%blocklist blocked.state])
+    ``pongo-update+!>(`pongo-update`[%blocklist blocked.state])
   ::
   ::  get all conversations and get unread count + most recent message
   ::
       [%x %conversations ~]
     ~&  >  "pongo: fetching all conversations"
     ~>  %bout
-    =-  ``pongo-update+!>([%conversations -])
+    =-  ``pongo-update+!>(`pongo-update`[%conversations -])
     ^-  (list conversation-info)
     %+  turn
       ::  only get undeleted conversations
@@ -734,7 +736,7 @@
       [%x %all-messages @ ~]
     ~&  >  "pongo: fetching all messages"
     ~>  %bout
-    =-  ``pongo-update+!>([%message-list -])
+    =-  ``pongo-update+!>(`pongo-update`[%message-list -])
     ^-  (list message)
     =/  convo-id  (slav %ux i.t.t.path)
     ?~  convo=(fetch-conversation convo-id)
@@ -759,7 +761,7 @@
     ~&  >
     "pongo: fetching messages from {<convo-id>} with ids {<start>}-{<end>}"
     ~>  %bout
-    =-  ``pongo-update+!>([%message-list -])
+    =-  ``pongo-update+!>(`pongo-update`[%message-list -])
     ^-  (list message)
     ?~  convo=(fetch-conversation convo-id)  ~
     %+  turn
@@ -772,10 +774,29 @@
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ::
+  ::
+  ::
+      [%x %message @ @ ~]
+    =/  convo-id    (slav %ux i.t.t.path)
+    =/  message-id  (slav %ud i.t.t.t.path)
+    ~&  >
+    "pongo: fetching message from {<convo-id>} with id {<message-id>}"
+    ~>  %bout
+    ?~  convo=(fetch-conversation convo-id)  [~ ~]
+    =-  ``pongo-update+!>(`pongo-update`[%message -])
+    :-  convo-id
+    !<  message
+    :-  -:!>(*message)
+    %-  head
+    =<  -
+    %+  q:db.state  %pongo
+    :+  %select  messages-table-id.u.convo
+    [%s %id %& %eq message-id]
+  ::
   ::  get all sent and received invites
   ::
       [%x %invites ~]
-    ``pongo-update+!>([%invites invites-sent.state invites.state])
+    ``pongo-update+!>(`pongo-update`[%invites invites-sent.state invites.state])
   ==
 ::
 ++  fetch-conversation
