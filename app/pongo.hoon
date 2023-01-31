@@ -181,6 +181,7 @@
       ?-    kind.message
           ?(%text %code)
         ::  normal message
+        ?:  muted.convo  `convo
         ?~  ca=(give-push-notification id.convo message [our now]:bowl)
           `convo
         [u.ca^~ convo]
@@ -427,6 +428,7 @@
           router=our.bowl
           [%b config.action(members members.config.action)]
           deleted=%.n
+          muted=%.n
           ~
       ==
     ::  add this conversation to our table and create a messages table for it
@@ -659,6 +661,24 @@
     %+  ~(poke pass:io /thread-stop/[ta-now])
       [our.bowl %spider]
     spider-stop+!>([tid %.y])
+  ::
+      %mute-conversation
+    =.  db.state
+      =<  +
+      %+  q:db.state  %pongo
+      :^  %update  %conversations
+        [%s %id %& %eq conversation-id.action]
+      ~[[%muted |=(v=value:nectar %.y)]]
+    `state
+  ::
+      %unmute-conversation
+    =.  db.state
+      =<  +
+      %+  q:db.state  %pongo
+      :^  %update  %conversations
+        [%s %id %& %eq conversation-id.action]
+      ~[[%muted |=(v=value:nectar %.n)]]
+    `state
   ==
 ::
 ++  handle-graph-update

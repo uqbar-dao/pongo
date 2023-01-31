@@ -193,6 +193,7 @@
           %open     ~
           %managed  a+(turn ~(tap in leaders.p.meta.c) ship)
         ==
+        ['muted' b+muted.c]
     ==
   ::
   ++  update-to-json

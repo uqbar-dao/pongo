@@ -51,6 +51,8 @@
         ==
         ::
         [%cancel-search (ot ~[[%uid (se %ux)]])]
+        [%mute-conversation (ot ~[[%id (se %ux)]])]
+        [%unmute-conversation (ot ~[[%id (se %ux)]])]
     ==
     ++  parse-config
       ::  %-  conversation-metadata:p

@@ -78,6 +78,7 @@
       [%router [6 | %p]]
       [%members [7 | %blob]]
       [%deleted [8 | %f]]
+      [%muted [9 | %f]]
   ==
 ::
 ++  conversations-indices
@@ -111,6 +112,7 @@
       router=@p
       meta=[%b p=conversation-metadata]
       deleted=?
+      muted=?
       ~
   ==
 ::
@@ -172,6 +174,9 @@
           phrase=@t
       ==
       [%cancel-search uid=@ux]
+      ::
+      [%mute-conversation =conversation-id]
+      [%unmute-conversation =conversation-id]
   ==
 ::
 ::  update types from scries and subscriptions, used for interacting
