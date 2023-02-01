@@ -1,4 +1,4 @@
-/-  *pongo, settings
+/-  *pongo, se=settings
 /+  sig, nectar
 |%
 ++  give-push-notification
@@ -8,15 +8,19 @@
     ::
     =/  pre=path  /(scot %p our)/settings-store/(scot %da now)
     ::  TODO remove these first two if viable
-    ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))
-      ~
-    ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))
-      ~
+    ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))  ~
+    ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))  ~
     ::
-    =/  =data:settings
-      .^(data:settings %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
-    ?.  ?=(%entry -.data)  ~
-    ?.  ?=(%s -.val.data)  ~
+    =/  =data:se
+      .^(data:se %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
+    =/  ship-url=data:se
+      .^(data:se %gx (weld pre /entry/landscape/ping-app/ship-url/noun))
+    ?.  ?&  ?=(%entry -.data)
+            ?=(%s -.val.data)
+            ?=(%entry -.ship-url)
+            ?=(%s -.val.ship-url)
+        ==
+      ~
     ::  send http request
     ::
     =|  =request:http
@@ -34,6 +38,7 @@
           :-  %data
           %-  pairs:enjs:format
           :~  ['ship' s+(scot %p our)]
+              ['ship_url' s+p.val.ship-url]
               ['conversation_id' s+(scot %ux conversation-id)]
               ['message_id' s+(scot %ud id.message)]
           ==
@@ -277,6 +282,14 @@
         %blocklist
       %+  frond  'blocklist'
       a+(turn ~(tap in +.upd) ship)
+    ::
+        %notification
+      %+  frond  'notification'
+      %-  pairs
+      :~  ['convo_name' s+convo-name.upd]
+          ['author' (ship author.upd)]
+          ['content' s+content.upd]
+      ==
     ==
   --
 --

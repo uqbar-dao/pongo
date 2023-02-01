@@ -196,6 +196,7 @@
           rec=(map conversation-id [from=@p =conversation])
       ==
       [%blocklist (set @p)]
+      [%notification convo-name=@t author=@p content=@t]
   ==
 ::
 +$  conversation-info

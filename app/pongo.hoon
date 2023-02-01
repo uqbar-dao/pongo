@@ -796,15 +796,16 @@
   ::
   ::
   ::
-      [%x %message @ @ ~]
+      [%x %notification @ @ ~]
     =/  convo-id    (slav %ux i.t.t.path)
     =/  message-id  (slav %ud i.t.t.t.path)
     ~&  >
-    "pongo: fetching message from {<convo-id>} with id {<message-id>}"
+    "pongo: fetching notif from {<convo-id>} with id {<message-id>}"
     ~>  %bout
     ?~  convo=(fetch-conversation convo-id)  [~ ~]
-    =-  ``pongo-update+!>(`pongo-update`[%message -])
-    :-  convo-id
+    =-  ``pongo-update+!>(`pongo-update`[%notification -])
+    :-  name.u.convo
+    =<  [author content]
     !<  message
     :-  -:!>(*message)
     %-  head
