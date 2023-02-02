@@ -107,8 +107,6 @@
             ::  forward updates along search results path
             =/  tid  -.+.+.wire
             =/  upd  !<(pongo-update q.cage.sign)
-            ~&  >>  "giving fact to frontend on path {</search-results/[tid]>}:"
-            ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
             :_  this
             (fact:io pongo-update+!>(upd) ~[/search-results/[tid]])^~
           ==
@@ -739,8 +737,6 @@
   ::  get all conversations and get unread count + most recent message
   ::
       [%x %conversations ~]
-    ~&  >  "pongo: fetching all conversations"
-    ~>  %bout
     =-  ``pongo-update+!>(`pongo-update`[%conversations -])
     ^-  (list conversation-info)
     %+  turn
@@ -764,8 +760,6 @@
   ::  warning: could be slow for long conversations!
   ::
       [%x %all-messages @ ~]
-    ~&  >  "pongo: fetching all messages"
-    ~>  %bout
     =-  ``pongo-update+!>(`pongo-update`[%message-list -])
     ^-  (list message)
     =/  convo-id  (slav %ux i.t.t.path)
@@ -788,9 +782,6 @@
         (sub message-id num-before)
     =/  end=@ud
       (add message-id num-after)
-    ~&  >
-    "pongo: fetching messages from {<convo-id>} with ids {<start>}-{<end>}"
-    ~>  %bout
     =-  ``pongo-update+!>(`pongo-update`[%message-list -])
     ^-  (list message)
     ?~  convo=(fetch-conversation convo-id)  ~
@@ -809,9 +800,6 @@
       [%x %notification @ @ ~]
     =/  convo-id    (slav %ux i.t.t.path)
     =/  message-id  (slav %ud i.t.t.t.path)
-    ~&  >
-    "pongo: fetching notif from {<convo-id>} with id {<message-id>}"
-    ~>  %bout
     ?~  convo=(fetch-conversation convo-id)  [~ ~]
     =-  ``pongo-update+!>(`pongo-update`[%notification -])
     :-  name.u.convo
@@ -828,6 +816,11 @@
   ::
       [%x %invites ~]
     ``pongo-update+!>(`pongo-update`[%invites invites-sent.state invites.state])
+  ::
+  ::  get current notification level
+  ::
+      [%x %notification-level ~]
+    ``pongo-update+!>(`pongo-update`[%level notif-setting.state])
   ==
 ::
 ++  fetch-conversation
@@ -853,8 +846,8 @@
 ++  give-update
   |=  upd=pongo-update
   ^-  card
-  ~&  >>  "giving fact to frontend: "
-  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
+  ::  ~&  >>  "giving fact to frontend: "
+  ::  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
 ::
 ++  graph-add-tag

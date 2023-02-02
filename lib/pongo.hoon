@@ -301,6 +301,10 @@
           ['author' (ship author.upd)]
           ['content' s+content.upd]
       ==
+    ::
+        %level
+      %+  frond  'notification-level'
+      s+(scot %tas +.upd)
     ==
   --
 --

@@ -200,6 +200,7 @@
       ==
       [%blocklist (set @p)]
       [%notification convo-name=@t author=@p content=@t]
+      [%level notif-setting]
   ==
 ::
 +$  conversation-info
