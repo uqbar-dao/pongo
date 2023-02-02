@@ -1,4 +1,6 @@
 |%
++$  notif-setting
+  ?(%off %low %medium %high)  ::  defaults to medium
 ::
 ::  schema: a table handles one conversation
 ::
@@ -175,6 +177,7 @@
       ==
       [%cancel-search uid=@ux]
       ::
+      [%set-notification-level =notif-setting]
       [%mute-conversation =conversation-id]
       [%unmute-conversation =conversation-id]
   ==

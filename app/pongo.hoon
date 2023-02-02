@@ -23,6 +23,7 @@
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
       blocked=(set @p)
+      =notif-setting
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
       ::  "ephemeral state"
@@ -43,7 +44,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ ~ ~ ~ ~]
+      :_  [~ ~ %medium ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
       ^-  table:nectar
@@ -55,9 +56,12 @@
     ++  on-save  !>(state)
     ::
     ++  on-load
-      |=  old=vase
+      |=  =vase
       ^-  (quip card _this)
-      `this(state !<(_state old))
+      =/  old=(unit ^state)
+        (mole |.(!<(^state vase)))
+      ?~  old  on-init
+      `this(state u.old)
     ::
     ++  on-poke
       |=  [=mark =vase]
@@ -182,9 +186,12 @@
           ?(%text %code)
         ::  normal message
         ?:  muted.convo  `convo
-        ?~  ca=(give-push-notification id.convo message [our now]:bowl)
-          `convo
-        [u.ca^~ convo]
+        =-  ?~  -  `convo  [u.-^~ convo]
+        %:  give-push-notification
+            convo  message
+            notif-setting.state
+            [our now]:bowl
+        ==
       ::
           %member-add
         =.  members.p.meta.convo
@@ -661,6 +668,9 @@
     %+  ~(poke pass:io /thread-stop/[ta-now])
       [our.bowl %spider]
     spider-stop+!>([tid %.y])
+  ::
+      %set-notification-level
+    `state(notif-setting notif-setting.action)
   ::
       %mute-conversation
     =.  db.state

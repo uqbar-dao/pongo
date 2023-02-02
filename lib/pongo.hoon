@@ -2,53 +2,64 @@
 /+  sig, nectar
 |%
 ++  give-push-notification
-  |=  [=conversation-id =message our=ship now=@da]
+  |=  [=conversation =message =notif-setting our=ship now=@da]
   ^-  (unit card:agent:gall)
+  ?:  ?=(%off notif-setting)  ~
   ::  read from settings-store
-    ::
-    =/  pre=path  /(scot %p our)/settings-store/(scot %da now)
-    ::  TODO remove these first two if viable
-    ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))  ~
-    ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))  ~
-    ::
-    =/  =data:se
-      .^(data:se %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
-    =/  ship-url=data:se
-      .^(data:se %gx (weld pre /entry/landscape/ping-app/ship-url/noun))
-    ?.  ?&  ?=(%entry -.data)
-            ?=(%s -.val.data)
-            ?=(%entry -.ship-url)
-            ?=(%s -.val.ship-url)
-        ==
-      ~
-    ::  send http request
-    ::
-    =|  =request:http
-    =:  method.request       %'POST'
-        url.request          'https://exp.host/--/api/v2/push/send'
-        header-list.request  ~[['Content-Type' 'application/json']]
-        body.request
-      :-  ~
-      %-  as-octt:mimes:html
-      %-  en-json:html
-      %-  pairs:enjs:format
-      :~  to+s+p.val.data
-          title+s+''
-          body+s+''
-          :-  %data
-          %-  pairs:enjs:format
-          :~  ['ship' s+(scot %p our)]
-              ['ship_url' s+p.val.ship-url]
-              ['conversation_id' s+(scot %ux conversation-id)]
-              ['message_id' s+(scot %ud id.message)]
-          ==
+  ::
+  =/  pre=path  /(scot %p our)/settings-store/(scot %da now)
+  ::  TODO remove these first two if viable
+  ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))  ~
+  ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))  ~
+  ::
+  =/  =data:se
+    .^(data:se %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
+  =/  ship-url=data:se
+    .^(data:se %gx (weld pre /entry/landscape/ping-app/ship-url/noun))
+  ?.  ?&  ?=(%entry -.data)
+          ?=(%s -.val.data)
+          ?=(%entry -.ship-url)
+          ?=(%s -.val.ship-url)
       ==
-    ==
+    ~
+  ::  send http request
+  ::
+  =|  =request:http
+  =:  method.request       %'POST'
+      url.request          'https://exp.host/--/api/v2/push/send'
+      header-list.request  ~[['Content-Type' 'application/json']]
+      body.request
     :-  ~
-    :*  %pass  /push-notification/(scot %da now)
-        %arvo  %i  %request
-        request  *outbound-config:iris
+    %-  as-octt:mimes:html
+    %-  en-json:html
+    %-  pairs:enjs:format
+    :~  to+s+p.val.data
+        :-  %title
+        ?-    notif-setting
+            %high  s+''
+            ?(%low %medium)
+          s+(crip "Message in {<name.conversation>}")
+        ==
+        :-  %body
+        ?-    notif-setting
+            ?(%medium %high)  s+''
+            %low
+          s+(crip "{<author.message>}: {<content.message>}")
+        ==
+        :-  %data
+        %-  pairs:enjs:format
+        :~  ['ship' s+(scot %p our)]
+            ['ship_url' s+p.val.ship-url]
+            ['conversation_id' s+(scot %ux id.conversation)]
+            ['message_id' s+(scot %ud id.message)]
+        ==
     ==
+  ==
+  :-  ~
+  :*  %pass  /push-notification/(scot %da now)
+      %arvo  %i  %request
+      request  *outbound-config:iris
+  ==
 ::
 ::  search thread stuff
 ::

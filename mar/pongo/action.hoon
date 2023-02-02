@@ -51,6 +51,7 @@
         ==
         ::
         [%cancel-search (ot ~[[%uid (se %ux)]])]
+        [%set-notification-level (ot ~[[%level (se %tas)]])]
         [%mute-conversation (ot ~[[%id (se %ux)]])]
         [%unmute-conversation (ot ~[[%id (se %ux)]])]
     ==
