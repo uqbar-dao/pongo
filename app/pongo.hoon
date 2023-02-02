@@ -44,7 +44,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ ['' '' %off] ~ ~ ~ ~]
+      :_  [~ ~ ['' '' %medium] ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
       ^-  table:nectar
