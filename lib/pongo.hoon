@@ -1,25 +1,12 @@
-/-  *pongo, se=settings
+/-  *pongo
 /+  sig, nectar
 |%
 ++  give-push-notification
-  |=  [=conversation =message =notif-setting our=ship now=@da]
+  |=  [=conversation =message =notif-settings our=ship now=@da]
   ^-  (unit card:agent:gall)
-  ?:  ?=(%off notif-setting)  ~
-  ::  read from settings-store
-  ::
-  =/  pre=path  /(scot %p our)/settings-store/(scot %da now)
-  ::  TODO remove these first two if viable
-  ?.  .^(? %gx (weld pre /has-bucket/landscape/ping-app/noun))  ~
-  ?.  .^(? %gx (weld pre /has-entry/landscape/ping-app/expo-token/noun))  ~
-  ::
-  =/  =data:se
-    .^(data:se %gx (weld pre /entry/landscape/ping-app/expo-token/noun))
-  =/  ship-url=data:se
-    .^(data:se %gx (weld pre /entry/landscape/ping-app/ship-url/noun))
-  ?.  ?&  ?=(%entry -.data)
-          ?=(%s -.val.data)
-          ?=(%entry -.ship-url)
-          ?=(%s -.val.ship-url)
+  ?:  ?|  ?=(%off level.notif-settings)
+          =('' expo-token.notif-settings)
+          =('' ship-url.notif-settings)
       ==
     ~
   ::  send http request
@@ -33,15 +20,15 @@
     %-  as-octt:mimes:html
     %-  en-json:html
     %-  pairs:enjs:format
-    :~  to+s+p.val.data
+    :~  to+s+expo-token.notif-settings
         :-  %title
-        ?-    notif-setting
+        ?-    level.notif-settings
             %high  s+''
             ?(%low %medium)
           s+(crip "Message in {<name.conversation>}")
         ==
         :-  %body
-        ?-    notif-setting
+        ?-    level.notif-settings
             ?(%medium %high)  s+''
             %low
           s+(crip "{<author.message>}: {<content.message>}")
@@ -49,7 +36,7 @@
         :-  %data
         %-  pairs:enjs:format
         :~  ['ship' s+(scot %p our)]
-            ['ship_url' s+p.val.ship-url]
+            ['ship_url' s+ship-url.notif-settings]
             ['conversation_id' s+(scot %ux id.conversation)]
             ['message_id' s+(scot %ud id.message)]
         ==
@@ -302,9 +289,13 @@
           ['content' s+content.upd]
       ==
     ::
-        %level
-      %+  frond  'notification-level'
-      s+(scot %tas +.upd)
+        %notif-settings
+      %+  frond  'notif-settings'
+      %-  pairs
+      :~  ['expo_token' s+expo-token.upd]
+          ['ship_url' s+ship-url.upd]
+          ['level' s+(scot %tas level.upd)]
+      ==
     ==
   --
 --

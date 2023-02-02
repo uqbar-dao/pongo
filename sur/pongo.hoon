@@ -1,6 +1,9 @@
 |%
-+$  notif-setting
-  ?(%off %low %medium %high)  ::  defaults to medium
++$  notif-settings
+  $:  expo-token=@t
+      ship-url=@t
+      level=?(%off %low %medium %high)
+  ==
 ::
 ::  schema: a table handles one conversation
 ::
@@ -177,7 +180,7 @@
       ==
       [%cancel-search uid=@ux]
       ::
-      [%set-notification-level =notif-setting]
+      [%set-notifications =notif-settings]
       [%mute-conversation =conversation-id]
       [%unmute-conversation =conversation-id]
   ==
@@ -200,7 +203,7 @@
       ==
       [%blocklist (set @p)]
       [%notification convo-name=@t author=@p content=@t]
-      [%level notif-setting]
+      [%notif-settings notif-settings]
   ==
 ::
 +$  conversation-info

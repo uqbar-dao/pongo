@@ -23,7 +23,7 @@
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
       blocked=(set @p)
-      =notif-setting
+      =notif-settings
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
       ::  "ephemeral state"
@@ -44,7 +44,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :_  [~ ~ %medium ~ ~ ~ ~]
+      :_  [~ ~ ['' '' %off] ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
       ^-  table:nectar
@@ -187,7 +187,7 @@
         =-  ?~  -  `convo  [u.-^~ convo]
         %:  give-push-notification
             convo  message
-            notif-setting.state
+            notif-settings.state
             [our now]:bowl
         ==
       ::
@@ -667,8 +667,8 @@
       [our.bowl %spider]
     spider-stop+!>([tid %.y])
   ::
-      %set-notification-level
-    `state(notif-setting notif-setting.action)
+      %set-notifications
+    `state(notif-settings notif-settings.action)
   ::
       %mute-conversation
     =.  db.state
@@ -819,8 +819,8 @@
   ::
   ::  get current notification level
   ::
-      [%x %notification-level ~]
-    ``pongo-update+!>(`pongo-update`[%level notif-setting.state])
+      [%x %notif-settings ~]
+    ``pongo-update+!>(`pongo-update`[%notif-settings notif-settings.state])
   ==
 ::
 ++  fetch-conversation
