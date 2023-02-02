@@ -363,7 +363,7 @@
 ++  valid-message-contents
   |=  [=message convo=conversation]
   ^-  ?
-  ?.  =(id.message +(last-message.convo))  %.n
+  ?.  (gth id.message last-message.convo)  %.n
   ?-    kind.message
     ?(%text %code)  %.y
   ::
