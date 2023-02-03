@@ -13,12 +13,12 @@
 ++  delivery-tracking-cutoff  5
 ::  arbitrary limits for some measure of performance guarantees
 ++  message-length-limit      1.024
-++  member-count-limit        100  ::  TODO implement
+::  ++  member-count-limit        100  ::  maybe in future.
 ::
 ::  %pongo agent state
 ::
 +$  state
-  $:  ::  "deep state"
+  $:  %1  ::  "deep state"
       db=_database:nectar
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
@@ -44,6 +44,7 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
+      :-  %1
       :_  [~ ~ ['' '' %medium] ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
@@ -136,16 +137,33 @@
     :_  state(undelivered (~(del by undelivered.state) hash.ping))
     ?:  =('' fe-id.u.has)  ~
     (give-update [%delivered conversation-id.ping fe-id.u.has])^~
-  =/  convo=conversation
-    ?:  ?=(%invite -.ping)
-      conversation.ping
-    =-  ?^(- u.- ~|("%pongo: got pinged for nonexistant conversation" !!))
-    %-  fetch-conversation
+  ?:  ?=(%invite -.ping)
+    ::  we've received an invite to a conversation
+    ::  ignore invites from blocked ships
+    ?:  (~(has in blocked.state) src.bowl)  `state
+    =+  [src.bowl conversation.ping]
+    :_  state(invites (~(put by invites.state) id.conversation.ping -))
+    :~  ::  remove this to turn off auto-accept
+        %+  ~(poke pass:io /accept-invite)  [our.bowl %pongo]
+        pongo-action+!>(`action`[%accept-invite id.conversation.ping])
+        (give-update [%invite conversation.ping])
+    ==
+  =/  =conversation-id
+    ::  this is infuriating but necessary because type unions can't refine
     ?-  -.ping
       %message         conversation-id.ping
       ?(%edit %react)  conversation-id.ping
       ?(%accept-invite %reject-invite %invite-request)  conversation-id.ping
     ==
+  ?~  conv=(fetch-conversation conversation-id)
+    ::  we got pinged for a conversation we don't know about
+    ::  be optimistic and request an invite!
+    ~&  >>  "%pongo: trying to re-join missing convo..."
+    :_  state  :_  ~
+    %+  ~(poke pass:io /request-invite-for-missing-convo)
+      [src.bowl %pongo]
+    ping+!>(`^ping`[%invite-request conversation-id])
+  =*  convo  u.conv
   ?-    -.ping
       %message
     ::  we've received a new message
@@ -283,27 +301,12 @@
       :_  ~  :-  %reactions
       |=  v=value:nectar
       ^-  value:nectar
-      ?>  &(?=(^ v) ?=(%j -.v))
-      j+(~(put ju p.v) reaction.ping src.bowl)
+      ?>  &(?=(^ v) ?=(%m -.v))
+      m+(~(put by p.v) src.bowl reaction.ping)
     ?~  reacted  `state
     :_  state  :_  ~
     %-  give-update
     [%message id.convo !<(message [-:!>(*message) (head reacted)])]
-  ::
-      %invite
-    ::  we've received an invite to a conversation
-    ::  ignore invites from blocked ships
-    ?:  (~(has in blocked.state) src.bowl)  `state
-    ::  conversation names must be *locally* unique, so if we
-    ::  already have a conversation with this name, we append
-    ::  a number to the end of the name.
-    =+  [src.bowl conversation.ping]
-    :_  state(invites (~(put by invites.state) id.convo -))
-    :~  ::  remove this to turn off auto-accept
-        %+  ~(poke pass:io /accept-invite)  [our.bowl %pongo]
-        pongo-action+!>(`action`[%accept-invite id.convo])
-        (give-update [%invite conversation.ping])
-    ==
   ::
       %accept-invite
     ::  an invite we sent has been accepted
@@ -320,7 +323,7 @@
         now.bowl
         %member-add
         (scot %p src.bowl)
-        %.n  ~  [%j ~]  ~
+        %.n  ~  [%m ~]  [%s ~]  ~
     ==
   ::
       %reject-invite
@@ -334,7 +337,7 @@
     ::  otherwise send them an invite! (can remove this)
     ::  ignore requests from blocked ships
     ?:  (~(has in blocked.state) src.bowl)  `state
-    ?>  ?=(%open -.p.meta.convo)
+    ?>  ?=(?(%open %dm) -.p.meta.convo)
     :_  state(invites-sent (~(put ju invites-sent.state) id.convo src.bowl))
     :_  ~
     %+  ~(poke pass:io /send-invite)  [src.bowl %pongo]
@@ -365,8 +368,8 @@
       ?.  =(src.i.pending author.message)  message
       message(edited %.y, content edit.i.pending)
         %react
-      =+  [reaction.i.pending src.i.pending]
-      message(p.reactions (~(put ju p.reactions.message) -))
+      =+  [src.i.pending reaction.i.pending]
+      message(p.reactions (~(put by p.reactions.message) -))
     ==
   $(pending t.pending)
 ::
@@ -380,25 +383,25 @@
       %member-remove
     ?:  =(author.message (slav %p content.message))  %.y
     ?-  -.p.meta.convo
-      %open     %.n
-      %managed  (~(has in leaders.p.meta.convo) author.message)
+      ?(%open %dm)  %.n
+      %managed      (~(has in leaders.p.meta.convo) author.message)
     ==
   ::
       ?(%member-add %change-name)
     ?-  -.p.meta.convo
-      %open     %.y
-      %managed  (~(has in leaders.p.meta.convo) author.message)
+      ?(%open %dm)  %.y  ::  this is right, sadly
+      %managed      (~(has in leaders.p.meta.convo) author.message)
     ==
   ::
       %leader-add
     ?-  -.p.meta.convo
-      %open     %.n
-      %managed  (~(has in leaders.p.meta.convo) author.message)
+      ?(%open %dm)  %.n
+      %managed      (~(has in leaders.p.meta.convo) author.message)
     ==
   ::
       %leader-remove
     ?-  -.p.meta.convo
-      %open     %.n
+      ?(%open %dm)  %.n
         %managed
       ?&  (gte ~(wyt in leaders.p.meta.convo) 2)
           (~(has in leaders.p.meta.convo) author.message)
@@ -424,10 +427,24 @@
     ::  already have a conversation with this name, we append
     ::  a number to the end of the name.
     ::
+    ::  if a conversation is a DM (1:1 convo) we assign unique ID based
+    ::  on the two ship names. DMs cannot be duplicated this way.
+    ::
     =.  members.config.action  (~(put in members.config.action) our.bowl)
-    ?>  (gth ~(wyt in members.config.action) 1)
-    ::  generate unique ID, TODO check back on this
-    =+  id=(sham (cat 3 our.bowl eny.bowl))
+    =/  member-count  ~(wyt in members.config.action)
+    ::  generate unique ID
+    =/  id
+      ?:  ?=(%dm -.config.action)
+        ::  enforce that we don't already have a DM of this nature
+        ::  and that DMs have exactly 2 members
+        =+  `@ux`(sham (rap 3 ~(tap in members.config.action)))
+        ?.  &(=(member-count 2) ?=(~ (fetch-conversation -)))
+          ~|("pongo: error: tried to make duplicate DM / multiparty DM" !!)
+        -
+      ::  enforce group chats have at least 3 members
+      ?.  (gth member-count 2)
+        ~|("pongo: error: tried to make group with <3 members" !!)
+      (sham (cat 3 our.bowl eny.bowl))
     =/  convo=conversation
       :*  `@ux`id
           messages-table-id=`@ux`(sham id)
@@ -500,7 +517,7 @@
         [%s %id %& %eq conversation-id.action]
       ~[[%deleted |=(v=value:nectar %.y)]]
     =-  $(action [%send-message -])
-    ['' conversation-id.action %member-remove (scot %p our.bowl) ~]
+    ['' conversation-id.action %member-remove (scot %p our.bowl) ~ ~]
   ::
       %send-message
     ::  create a message and send to a conversation we're in
@@ -515,7 +532,7 @@
           content.action
           edited=%.n
           reference.action
-          [%j ~]  ~
+          [%m ~]  [%s mentions.action]  ~
       ==
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
@@ -608,8 +625,7 @@
       ::  we've been here before, revive "deleted" convo
       ?.  deleted.u.hav
         ::  we've been here before and we never really left!
-        ::  this could be a trap!
-        ~|("%pongo: error: got duplicate conversation ID invite" !!)
+        [convo db.state]
       :-  convo
       %+  update-rows:db.state  %pongo^%conversations
       ~[convo(last-active now.bowl, last-read 0)]
@@ -726,7 +742,7 @@
       [our.bowl %pongo]
     :-  %pongo-action
     !>  ^-  action
-    [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~]
+    [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~ ~]
   ==
 ::
 ++  handle-scry

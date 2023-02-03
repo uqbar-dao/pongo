@@ -26,6 +26,7 @@
             [%content so]
             ::  doesn't want dots
             [%reference (su dem):dejs-soft:format]
+            [%mentions (as (se %p))]
         ==
         ::
         :-  %send-message-edit
@@ -63,6 +64,7 @@
       %-  of
       :~  [%managed (ot ~[[%members (as (se %p))] [%leaders (as (se %p))]])]
           [%open (ot ~[[%members (as (se %p))]])]
+          [%dm (ot ~[[%members (as (se %p))]])]
       ==
     --
   --

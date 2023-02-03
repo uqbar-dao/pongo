@@ -23,10 +23,8 @@
     %-  pairs:enjs:format
     :~  to+s+expo-token.notif-settings
         :-  %badge
-        %-  numb:enjs:format
-        ?:  (gte [last-read last-message]:conversation)
-          1
-        (sub [last-message last-read]:conversation)
+        ::  TODO count up all unreads
+        (numb:enjs:format 1)
     ::
         :-  %title
         ?-    level.notif-settings
@@ -34,15 +32,21 @@
             ?(%low %medium)
           :-  %s
           ?:  (gth ~(wyt in members.p.meta.conversation) 2)
-            (crip "Message in {<name.conversation>}")
-          (crip "Message from {<author.message>}")
+            name.conversation
+          (scot %p author.message)
         ==
     ::
         :-  %body
-        ?-    level.notif-settings
-            ?(%medium %high)  s+''
+        ?-  level.notif-settings
+          %high    s+''
+            %medium
+          ?.  (~(has in p.mentions.message) our)
+            s+'New message'
+          s+'Someone mentioned you'
             %low
-          s+(crip "{<author.message>}: {<content.message>}")
+          ?.  (~(has in p.mentions.message) our)
+            s+(crip "{<author.message>}: {<content.message>}")
+          s+(crip "{<author.message>} mentioned you: {<content.message>}")
         ==
     ::
         :-  %data
@@ -185,9 +189,17 @@
         ['reference' ?~(reference.m ~ s+(scot %ud u.reference.m))]
         :-  'reactions'
         %-  pairs
-        %+  turn  ~(tap by p.reactions.m)
-        |=  [r=reaction s=(set @p)]
-        [`@t`r a+(turn ~(tap in s) ship)]
+        ::  transform (map @p reaction) into a (map reaction (list @p))
+        =+  all=~(tap by p.reactions.m)
+        =|  res=(jar @t @p)
+        |-
+        ?~  all
+          %+  turn  ~(tap by res)
+          |=  [t=@t ps=(list @p)]
+          [t a+(turn ps ship)]
+        $(all t.all, res (~(add ja res) q.i.all p.i.all))
+        ::
+        ['mentions' a+(turn ~(tap in p.mentions.m) ship)]
         ?~  c  ~
         ['conversation_id' s+(scot %ux u.c)]^~
     ==
@@ -202,11 +214,12 @@
         ['last_active' (sect last-active.c)]
         ['last_read' s+(scot %ud last-read.c)]
         ::  don't share router node
+        ['dm' b+?=(%dm -.p.meta.c)]
         ['members' a+(turn ~(tap in members.p.meta.c) ship)]
         :-  'leaders'
         ?-  -.p.meta.c
-          %open     ~
-          %managed  a+(turn ~(tap in leaders.p.meta.c) ship)
+          ?(%open %dm)  ~
+          %managed      a+(turn ~(tap in leaders.p.meta.c) ship)
         ==
         ['muted' b+muted.c]
     ==

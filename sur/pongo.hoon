@@ -17,7 +17,7 @@
       [%edited [6 | %f]]
       [%reference [7 & %ud]]  ::  for replies
       [%reactions [8 | %map]]
-      ::  experiment: can we add mentions *later*?
+      [%mentions [9 | %set]]
   ==
 ::
 ::  indices: columns in table we keep an index of
@@ -43,7 +43,8 @@
       content=@t
       edited=?
       reference=(unit message-id)
-      reactions=[%j p=(jug reaction @p)]
+      reactions=[%m p=(map @p reaction)]
+      mentions=[%s p=(set @p)]
       ~
   ==
 ::
@@ -88,7 +89,6 @@
 ::
 ++  conversations-indices
   :~  [~[%id] primary=& autoincrement=~ unique=& clustered=|]
-      [~[%name] primary=| autoincrement=~ unique=& clustered=|]
       [~[%last-active] primary=| autoincrement=~ unique=| clustered=&]
   ==
 ::
@@ -97,10 +97,11 @@
 +$  conversation-metadata
   $%  [%managed members=(set @p) leaders=(set @p)]
       [%open members=(set @p) ~]  ::  hate this ~
+      [%dm members=(set @p) ~]
   ==
 ::
 ::  a conversation id is constructed by hashing the concatenation
-::  of the creator and some entropy grabbed by the creator
+::  of the two ships involved (if DM) or creator + some entropy if group
 ::
 +$  conversation-id  @ux
 ::
@@ -159,6 +160,7 @@
           =message-kind
           content=@t
           reference=(unit message-id)
+          mentions=(set @p)
       ==
       [%send-message-edit =conversation-id on=message-id edit=@t]
       [%send-reaction =conversation-id on=message-id =reaction]
