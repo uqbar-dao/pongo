@@ -1,5 +1,5 @@
 /-  *pongo, s=social-graph
-/+  verb, dbug, default-agent, io=agentio,
+/+  dbug, default-agent, io=agentio,
     *pongo, nectar, sig
 |%
 ::
@@ -113,7 +113,12 @@
         ==
       ==
     ::
-    ++  on-arvo   on-arvo:def
+    ++  on-arvo
+      |=  [=wire =sign-arvo]
+      ^-  (quip card _this)
+      ?.  ?=([%push-notification @ ~] wire)
+        (on-arvo:def wire sign-arvo)
+      `this
     ++  on-leave  on-leave:def
     ++  on-fail   on-fail:def
     --
