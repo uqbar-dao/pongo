@@ -7,6 +7,7 @@
   ?:  ?|  ?=(%off level.notif-settings)
           =('' expo-token.notif-settings)
           =('' ship-url.notif-settings)
+          =(our author.message)
       ==
     ~
   ::  send http request
@@ -21,18 +22,29 @@
     %-  en-json:html
     %-  pairs:enjs:format
     :~  to+s+expo-token.notif-settings
+        :-  %badge
+        %-  numb:enjs:format
+        ?:  (gte [last-read last-message]:conversation)
+          1
+        (sub [last-message last-read]:conversation)
+    ::
         :-  %title
         ?-    level.notif-settings
             %high  s+''
             ?(%low %medium)
-          s+(crip "Message in {<name.conversation>}")
+          :-  %s
+          ?:  (gth ~(wyt in members.p.meta.conversation) 2)
+            (crip "Message in {<name.conversation>}")
+          (crip "Message from {<author.message>}")
         ==
+    ::
         :-  %body
         ?-    level.notif-settings
             ?(%medium %high)  s+''
             %low
           s+(crip "{<author.message>}: {<content.message>}")
         ==
+    ::
         :-  %data
         %-  pairs:enjs:format
         :~  ['ship' s+(scot %p our)]
