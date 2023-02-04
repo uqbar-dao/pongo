@@ -160,7 +160,7 @@
           =message-kind
           content=@t
           reference=(unit message-id)
-          ::  mentions=(set @p)
+          mentions=(set @p)
       ==
       [%send-message-edit =conversation-id on=message-id edit=@t]
       [%send-reaction =conversation-id on=message-id =reaction]
