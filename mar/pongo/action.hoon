@@ -26,7 +26,7 @@
             [%content so]
             ::  doesn't want dots
             [%reference (su dem):dejs-soft:format]
-            [%mentions (as (se %p))]
+            ::  [%mentions (as (se %p))]
         ==
         ::
         :-  %send-message-edit

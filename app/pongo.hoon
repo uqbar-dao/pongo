@@ -518,7 +518,7 @@
         [%s %id %& %eq conversation-id.action]
       ~[[%deleted |=(v=value:nectar %.y)]]
     =-  $(action [%send-message -])
-    ['' conversation-id.action %member-remove (scot %p our.bowl) ~ ~]
+    ['' conversation-id.action %member-remove (scot %p our.bowl) ~] ::  ~]
   ::
       %send-message
     ::  create a message and send to a conversation we're in
@@ -533,7 +533,8 @@
           content.action
           edited=%.n
           reference.action
-          [%m ~]  [%s mentions.action]  ~
+          [%m ~]  ::  [%s mentions.action]  ~
+          [%s ~]  ~
       ==
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
@@ -743,7 +744,7 @@
       [our.bowl %pongo]
     :-  %pongo-action
     !>  ^-  action
-    [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~ ~]
+    [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~] ::  ~]
   ==
 ::
 ++  handle-scry
