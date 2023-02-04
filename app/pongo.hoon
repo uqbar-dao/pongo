@@ -1,5 +1,5 @@
 /-  *pongo, s=social-graph
-/+  dbug, default-agent, io=agentio,
+/+  verb, dbug, default-agent, io=agentio,
     *pongo, nectar, sig
 |%
 ::
@@ -34,6 +34,7 @@
 --
 ::
 ^-  agent:gall
+%+  verb  &
 %-  agent:dbug
 =|  =state
 =<  |_  =bowl:gall
