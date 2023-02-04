@@ -11,12 +11,9 @@
   ++  json
     ?-  -.upd
       %bad-sig      ~
-      %expired-sig  (who who.upd)
-      %good-sig     (who who.upd)
+      %expired-sig  (frond ['expired_sig' [%s (scot %p s)]])
+      %good-sig     (frond ['good_sig' [%s (scot %p s)]])
     ==
-  ++  who
-    |=  s=@p
-    (frond ['who' [%s (scot %p s)]])
   --
 ++  grad  %noun
 --
