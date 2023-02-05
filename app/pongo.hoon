@@ -438,14 +438,23 @@
       ?:  ?=(%dm -.config.action)
         ::  enforce that we don't already have a DM of this nature
         ::  and that DMs have exactly 2 members
-        =+  `@ux`(sham (rap 3 ~(tap in members.config.action)))
-        ?.  &(=(member-count 2) ?=(~ (fetch-conversation -)))
-          ~|("pongo: error: tried to make duplicate DM / multiparty DM" !!)
-        -
+        ?.  =(member-count 2)
+          ~|("pongo: error: tried to make multiparty DM" !!)
+        `@ux`(sham (rap 3 ~(tap in members.config.action)))
       ::  enforce group chats have at least 3 members
       ?.  (gth member-count 2)
         ~|("pongo: error: tried to make group with <3 members" !!)
-      (sham (cat 3 our.bowl eny.bowl))
+      `@ux`(sham (cat 3 our.bowl eny.bowl))
+    ::  TODO: fix this in a more permanent way?
+    =?    db.state
+        ?^  have=(fetch-conversation id)
+          ?.  deleted.u.have
+            ~|("pongo: error: duplicate conversation ID" !!)
+          %.y
+        %.n
+      ::  drop an old messages-table if replacing deleted convo
+      (drop-table:db.state %pongo^(sham id))
+    ::
     =/  convo=conversation
       :*  `@ux`id
           messages-table-id=`@ux`(sham id)
@@ -460,7 +469,7 @@
           ~
       ==
     ::  add this conversation to our table and create a messages table for it
-    =.  db.state  (insert-rows:db.state %pongo^%conversations ~[convo])
+    =.  db.state  (update-rows:db.state %pongo^%conversations ~[convo])
     =.  db.state
       %+  add-table:db.state  %pongo^messages-table-id.convo
       :^    (make-schema:nectar messages-schema)
