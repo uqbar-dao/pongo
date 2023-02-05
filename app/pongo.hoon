@@ -637,6 +637,8 @@
         ::  we've been here before and we never really left!
         [convo db.state]
       :-  convo
+      ::  delete old messages table
+      =-  (drop-table:- %pongo^messages-table-id.convo)
       %+  update-rows:db.state  %pongo^%conversations
       ~[convo(last-active now.bowl, last-read 0)]
     :_  state(invites (~(del by invites.state) id.convo))
