@@ -9,7 +9,7 @@
     =,  dejs:format
     |^
     %-  action:p
-    =-  ?.  =(%'make-conversation' -.-)  -
+    =-  ?.  =(%'make-conversation' -.-)   -
         ?.  ?=(?(%'dm' %'open') -.+.+.-)  -
         -(+ [-.+.- -.+.+.- +.+.+.- ~])
     %.  jon

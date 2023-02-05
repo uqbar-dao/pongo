@@ -776,6 +776,7 @@
     :+  convo
       last-message
     ?~  last-message  0
+    ?:  (gth last-read.convo id.u.last-message)  0
     (sub id.u.last-message last-read.convo)
   ::
   ::  get all messages from a particular conversation
