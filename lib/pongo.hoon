@@ -1,5 +1,5 @@
 /-  *pongo
-/+  sig, nectar
+/+  sig, n=nectar
 |%
 ++  give-push-notification
   |=  [unreads=@ud =conversation =message =notif-settings our=ship now=@da]
@@ -67,7 +67,7 @@
 ::
 ::  type used for search threads
 +$  search
-  $:  =database:nectar
+  $:  =database:n
       only-in=(unit conversation-id)
       only-author=(unit @p)
       phrase=@t
@@ -78,11 +78,11 @@
   ^-  (list [conversation-id message])
   ::  TODO handle searches across all conversations
   %+  turn
-    =-  -:(~(q db:nectar database) %pongo [%select (need only-in) where=-])
+    =-  -:(~(q db:n database) %pongo [%select (need only-in) where=-])
     =+  [%s %content %& %text-find (trip phrase)]
     ?~  only-author  -
     [%and [%s %author %& %eq u.only-author] -]
-  |=  =row:nectar
+  |=  =row:n
   [(need only-in) !<(message [-:!>(*message) row])]
 ::
 ::  utils

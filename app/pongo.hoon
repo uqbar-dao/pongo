@@ -1,6 +1,6 @@
 /-  *pongo, s=social-graph
 /+  verb, dbug, default-agent, io=agentio,
-    *pongo, nectar, sig
+    *pongo, nec=nectar, sig
 |%
 ::
 ::  pongo is currently tuned to auto-accept invites to new conversations.
@@ -19,7 +19,7 @@
 ::
 +$  state-0
   $:  %0  ::  "deep state" (TODO get rid of)
-      =database:nectar
+      =database:nec
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
       blocked=(set @p)
@@ -46,13 +46,13 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      =/  initial-db=database:nectar
-        %+  ~(add-table db:nectar *database:nectar)
+      =/  initial-db=database:nec
+        %+  ~(add-table db:nec *database:nec)
           %pongo^%conversations
-        ^-  table:nectar
-        :^    (make-schema:nectar conversations-schema)
+        ^-  table:nec
+        :^    (make-schema:nec conversations-schema)
             primary-key=~[%id]
-          (make-indices:nectar conversations-indices)
+          (make-indices:nec conversations-indices)
         ~
       [%0 initial-db ~ ~ ['' '' %low] ~ ~ 0 ~ ~]
     ::
@@ -195,7 +195,7 @@
       ?.  =(%member-remove kind.message)
         [(delivered-card author.message id.convo message-hash)^~ state]
       =.  database.state
-        %+  ~(update-rows db:nectar database.state)  %pongo^%conversations
+        %+  ~(update-rows db:nec database.state)  %pongo^%conversations
         ~[convo(members.p.meta (~(del in members.p.meta.convo) author.message))]
       [(graph-del-tag author.message name.convo)^~ state]
     ::
@@ -256,11 +256,11 @@
     ::  if we have pending edits/reactions to message, apply them now
     =.  message  (apply-pending-pings message id.convo)
     =.  database.state
-      %+  ~(update-rows db:nectar database.state)
+      %+  ~(update-rows db:nec database.state)
         %pongo^%conversations
       ~[convo]
     =.  database.state
-      %+  ~(insert-rows db:nectar database.state)
+      %+  ~(insert-rows db:nec database.state)
         %pongo^id.convo
       ~[message]
     :_  state
@@ -278,8 +278,8 @@
       `state(pending-pings (~(add ja pending-pings.state) -))
     ::
     =^  edited  database.state
-      =*  v  value:nectar
-      %+  ~(q db:nectar database.state)  %pongo
+      =*  v  value:nec
+      %+  ~(q db:nec database.state)  %pongo
       :^  %update  id.convo
         :+  %and  [%s %id %& %eq on.ping]
         :+  %and  [%s %author %& %eq src.bowl]
@@ -301,12 +301,12 @@
       =+  [[id.convo on.ping] [%react src.bowl reaction.ping]]
       `state(pending-pings (~(add ja pending-pings.state) -))
     =^  reacted  database.state
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       :^  %update  id.convo
         [%s %id %& %eq on.ping]
       :_  ~  :-  %reactions
-      |=  v=value:nectar
-      ^-  value:nectar
+      |=  v=value:nec
+      ^-  value:nec
       ?>  &(?=(^ v) ?=(%m -.v))
       m+(~(put by p.v) src.bowl reaction.ping)
     ?~  reacted  `state
@@ -458,7 +458,7 @@
           %.y
         %.n
       ::  drop an old messages-table if replacing deleted convo
-      (~(drop-table db:nectar database.state) %pongo^(sham id))
+      (~(drop-table db:nec database.state) %pongo^(sham id))
     ::
     =/  convo=conversation
       :*  `@ux`id
@@ -474,24 +474,25 @@
       ==
     ::  add this conversation to our table and create a messages table for it
     =.  database.state
-      (~(update-rows db:nectar database.state) %pongo^%conversations ~[convo])
+      (~(update-rows db:nec database.state) %pongo^%conversations ~[convo])
     =.  database.state
-      %+  ~(add-table db:nectar database.state)
+      %+  ~(add-table db:nec database.state)
         %pongo^id.convo
-      :^    (make-schema:nectar messages-schema)
+      :^    (make-schema:nec messages-schema)
           primary-key=~[%id]
-        (make-indices:nectar messages-indices)
+        (make-indices:nec messages-indices)
       ~
     ::  poke all indicated members in metadata with invites
     =/  mems  ~(tap in (~(del in members.config.action) our.bowl))
     ~&  >>  "%pongo: made conversation id: {<id.convo>} and invited {<mems>}"
-    :-  %+  snoc
-          ^-  (list card)
+    :-  %+  weld
           %+  turn  mems
           |=  to=@p
           %+  ~(poke pass:io /send-invite)  [to %pongo]
           ping+!>(`ping`[%invite convo(name name.action)])
-        (graph-add-tag our.bowl name.convo)
+        %+  turn  [our.bowl mems]
+        |=  to=@p
+        (graph-add-tag to name.convo)
     %=    state
         invites-sent
       |-
@@ -528,10 +529,10 @@
     ::  leave a conversation we're currently in
     =.  database.state
       =<  +
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
-      ~[[%deleted |=(v=value:nectar %.y)]]
+      ~[[%deleted |=(v=value:nec %.y)]]
     =-  $(action [%send-message -])
     ['' conversation-id.action %member-remove (scot %p our.bowl) ~ ~]
   ::
@@ -601,7 +602,7 @@
       ?:  (gth just-read total-unread.state)  0
       (sub total-unread.state just-read)
     =-  `state(database -)
-    %+  ~(update-rows db:nectar database.state)
+    %+  ~(update-rows db:nec database.state)
       %pongo^%conversations
     ~[u.convo(last-read message-id.action)]
   ::
@@ -633,14 +634,14 @@
         ::  we've never been in this conversation before
         =.  name.convo  (make-unique-name name.convo)
         =.  database.state
-          =+  %+  ~(insert-rows db:nectar database.state)
+          =+  %+  ~(insert-rows db:nec database.state)
                 %pongo^%conversations
               ~[convo(last-active now.bowl, last-read 0)]
-          %+  ~(add-table db:nectar -)
+          %+  ~(add-table db:nec -)
             %pongo^id.convo
-          :^    (make-schema:nectar messages-schema)
+          :^    (make-schema:nec messages-schema)
               primary-key=~[%id]
-            (make-indices:nectar messages-indices)
+            (make-indices:nec messages-indices)
           ~
         [convo database.state]
       ::  we've been here before, revive "deleted" convo
@@ -649,8 +650,8 @@
         [convo database.state]
       :-  convo
       ::  delete old messages table
-      =-  (~(drop-table db:nectar -) %pongo^id.convo)
-      %+  ~(update-rows db:nectar database.state)
+      =-  (~(drop-table db:nec -) %pongo^id.convo)
+      %+  ~(update-rows db:nec database.state)
         %pongo^%conversations
       ~[convo(last-active now.bowl, last-read 0)]
     :_  state(invites (~(del by invites.state) id.convo))
@@ -718,19 +719,19 @@
       %mute-conversation
     =.  database.state
       =<  +
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
-      ~[[%muted |=(v=value:nectar %.y)]]
+      ~[[%muted |=(v=value:nec %.y)]]
     `state
   ::
       %unmute-conversation
     =.  database.state
       =<  +
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
-      ~[[%muted |=(v=value:nectar %.n)]]
+      ~[[%muted |=(v=value:nec %.n)]]
     `state
   ==
 ::
@@ -787,14 +788,14 @@
     %+  turn
       ::  only get undeleted conversations
       =<  -
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       [%select %conversations where=[%s %deleted %& %eq %.n]]
-    |=  =row:nectar
+    |=  =row:nec
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])
     =/  last-message=(unit message)
       =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       [%select id.convo where=[%s %id %& %eq last-message.convo]]
     :+  convo
       last-message
@@ -812,8 +813,8 @@
     ?~  convo=(fetch-conversation convo-id)
       ~
     %+  turn
-      -:(~(q db:nectar database.state) %pongo [%select id.u.convo where=[%n ~]])
-    |=  =row:nectar
+      -:(~(q db:nec database.state) %pongo [%select id.u.convo where=[%n ~]])
+    |=  =row:nec
     !<(message [-:!>(*message) row])
   ::
   ::  /messages/[convo-id]/[msg-id]/[num-before]/[num-after]
@@ -833,12 +834,12 @@
     ?~  convo=(fetch-conversation convo-id)  ~
     %+  turn
       =<  -
-      %+  ~(q db:nectar database.state)  %pongo
+      %+  ~(q db:nec database.state)  %pongo
       :+  %select  id.u.convo
       :+  %and
         [%s %id %& %gte start]
       [%s %id %& %lte end]
-    |=  =row:nectar
+    |=  =row:nec
     !<(message [-:!>(*message) row])
   ::
   ::
@@ -854,7 +855,7 @@
     :-  -:!>(*message)
     %-  head
     =<  -
-    %+  ~(q db:nectar database.state)  %pongo
+    %+  ~(q db:nec database.state)  %pongo
     :+  %select  id.u.convo
     [%s %id %& %eq message-id]
   ::
@@ -873,12 +874,12 @@
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  -:(~(q db:nectar database.state) %pongo [%select %conversations where=[%s %id %& %eq id]])
+  -:(~(q db:nec database.state) %pongo [%select %conversations where=[%s %id %& %eq id]])
 ::
 ++  make-unique-name
   |=  given=@t
   ^-  @t
-  =+  -:(~(q db:nectar database.state) %pongo [%select %conversations [%s %name %& %eq given]])
+  =+  -:(~(q db:nec database.state) %pongo [%select %conversations [%s %name %& %eq given]])
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::
