@@ -458,7 +458,7 @@
           %.y
         %.n
       ::  drop an old messages-table if replacing deleted convo
-      (~(drop-table db:nec database.state) %pongo^(sham id))
+      (~(drop-table db:nec database.state) %pongo^id)
     ::
     =/  convo=conversation
       :*  `@ux`id
