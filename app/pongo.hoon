@@ -452,20 +452,21 @@
         ~|("pongo: error: tried to make group with <3 members" !!)
       `@ux`(sham (cat 3 our.bowl eny.bowl))
     ::  TODO: fix this in a more permanent way?
-    =?    database.state
-        ?^  have=(fetch-conversation id)
-          ?.  deleted.u.have
-            ~|("pongo: error: duplicate conversation ID" !!)
-          %.y
-        %.n
+    =^  old-last-message  database.state
+      ?~  have=(fetch-conversation id)
+        [0 database.state]
+      ?.  deleted.u.have
+        ~|("pongo: error: duplicate conversation ID" !!)
       ::  drop an old messages-table if replacing deleted convo
+      ::  BUT save the last-message index!
+      :-  last-message.u.have
       (~(drop-table db:nec database.state) %pongo^id)
     ::
     =/  convo=conversation
       :*  `@ux`id
           name=(make-unique-name name.action)
           last-active=now.bowl
-          last-message=0
+          last-message=old-last-message
           last-read=0
           router=our.bowl
           [%b config.action(members members.config.action)]
@@ -886,10 +887,17 @@
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
   -:(~(q db:nec database.state) %pongo [%select %conversations where=[%s %id %& %eq id]])
 ::
+++  message-poke
+  |=  [to=@p =ping]
+  ^-  card
+  (~(poke pass:io /send-message) [to %pongo] ping+!>(ping))
+::
 ++  make-unique-name
   |=  given=@t
   ^-  @t
-  =+  -:(~(q db:nec database.state) %pongo [%select %conversations [%s %name %& %eq given]])
+  =+  =<  -
+      %+  ~(q db:nec database.state)  %pongo
+      [%select %conversations [%s %name %& %eq given]]
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::
