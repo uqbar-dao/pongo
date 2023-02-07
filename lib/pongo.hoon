@@ -2,7 +2,7 @@
 /+  sig, nectar
 |%
 ++  give-push-notification
-  |=  [=conversation =message =notif-settings our=ship now=@da]
+  |=  [unreads=@ud =conversation =message =notif-settings our=ship now=@da]
   ^-  (unit card:agent:gall)
   ?:  ?|  ?=(%off level.notif-settings)
           =('' expo-token.notif-settings)
@@ -23,8 +23,7 @@
     %-  pairs:enjs:format
     :~  to+s+expo-token.notif-settings
         :-  %badge
-        ::  TODO count up all unreads
-        (numb:enjs:format 1)
+        (numb:enjs:format unreads)
     ::
         :-  %title
         ?-    level.notif-settings
@@ -45,8 +44,8 @@
           s+'Someone mentioned you'
             %low
           ?.  (~(has in p.mentions.message) our)
-            s+(crip "{<author.message>}: {<content.message>}")
-          s+(crip "{<author.message>} mentioned you: {<content.message>}")
+            s+(rap 3 ~[(scot %p author.message) ': ' content.message])
+          s+(rap 3 ~[(scot %p author.message) ' mentioned you: ' content.message])
         ==
     ::
         :-  %data

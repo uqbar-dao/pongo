@@ -17,8 +17,26 @@
 ::
 ::  %pongo agent state
 ::
-+$  state
++$  versioned-state
+  $%  state-1
+      state-2
+  ==
++$  state-1
   $:  %1  ::  "deep state"
+      db=_database:nectar
+      tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
+      ::  "configuration state"
+      blocked=(set @p)
+      =notif-settings
+      invites=(map conversation-id [from=@p =conversation])
+      invites-sent=(jug conversation-id @p)
+      ::  "ephemeral state"
+      undelivered=(map @uvH [message fe-id=@t want=(set @p)])
+      pending-pings=(jar [conversation-id message-id] pending-ping)
+  ==
++$  state-2
+  $:  %2  ::  "deep state"
+      total-unread=@ud
       db=_database:nectar
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
@@ -36,7 +54,7 @@
 ^-  agent:gall
 %+  verb  &
 %-  agent:dbug
-=|  =state
+=|  state=state-2
 =<  |_  =bowl:gall
     +*  this  .
         hc    ~(. +> bowl)
@@ -45,8 +63,8 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :-  %1
-      :_  [~ ~ ['' '' %medium] ~ ~ ~ ~]
+      :+  %2  0
+      :_  [~ ~ ['' '' %low] ~ ~ ~ ~]
       %+  add-table:~(. database:nectar ~)
         %pongo^%conversations
       ^-  table:nectar
@@ -60,10 +78,13 @@
     ++  on-load
       |=  =vase
       ^-  (quip card _this)
-      =/  old=(unit ^state)
-        (mole |.(!<(^state vase)))
+      =/  old=(unit versioned-state)
+        (mole |.(!<(versioned-state vase)))
       ?~  old  on-init
-      `this(state u.old)
+      ?-  -.u.old
+        %1  `this(state [%2 0 +.u.old])
+        %2  `this(state u.old)
+      ==
     ::
     ++  on-poke
       |=  [=mark =vase]
@@ -203,6 +224,7 @@
     =.  timestamp.message   now.bowl
     =.  last-active.convo   now.bowl
     =.  last-message.convo  id.message
+    =.  total-unread.state  +(total-unread.state)
     =^  cards  convo
       ?-    kind.message
           ?(%text %code)
@@ -210,6 +232,7 @@
         ?:  muted.convo  `convo
         =-  ?~  -  `convo  [u.-^~ convo]
         %:  give-push-notification
+            total-unread.state
             convo  message
             notif-settings.state
             [our now]:bowl
@@ -586,9 +609,14 @@
   ::
       %read-message
     ::  if read id is newer than current saved read id, replace in convo
+    ::  send out a new badge notif for app to update unread count
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
     ?.  (gth message-id.action last-read.u.convo)  `state
+    =.  total-unread.state
+      =/  just-read  (sub message-id.action last-read.u.convo)
+      ?:  (gth just-read total-unread.state)  0
+      (sub total-unread.state just-read)
     =-  `state(db -)
     %+  update-rows:db.state
       %pongo^%conversations
