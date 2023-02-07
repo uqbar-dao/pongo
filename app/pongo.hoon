@@ -436,7 +436,8 @@
     ::  if a conversation is a DM (1:1 convo) we assign unique ID based
     ::  on the two ship names. DMs cannot be duplicated this way.
     ::
-    =.  members.config.action  (~(put in members.config.action) our.bowl)
+    =.  members.config.action
+      (~(put in members.config.action) our.bowl)
     =/  member-count  ~(wyt in members.config.action)
     ::  generate unique ID
     =/  id
@@ -647,6 +648,15 @@
       ::  we've been here before, revive "deleted" convo
       ?.  deleted.u.hav
         ::  we've been here before and we never really left!
+        ::  if this is a DM, it means that they deleted and now want
+        ::  to start anew, but we never deleted the old DMs. treat
+        ::  it as them re-joining.
+        ?:  ?=(%dm -.p.meta.convo)
+          =.  members.p.meta.convo
+            (~(put in members.p.meta.convo) from)
+          :-  convo
+          %+  ~(update-rows db:nec database.state)
+          %pongo^%conversations  ~[convo]
         [convo database.state]
       :-  convo
       ::  delete old messages table
