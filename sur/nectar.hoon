@@ -3,6 +3,7 @@
 ::            database
 ::
 |%
++$  database  (map table-name table)
 ::
 +$  table-name  [app=@tas label=@]
 ::

@@ -19,22 +19,18 @@
 ::
 ::  database engine
 ::
-++  database
-  =>  |%
-      +$  tables  (map table-name _tab)
-      ::  stored procedures, computed views here..?
-      --
-  =|  =tables
-  |%
+++  db
+  |_  =database
   ::
   ::  run a query. if it's a non-mutating query you will get a list of rows.
   ::  this is the only external arm you should use?
   ::
   ++  q
     |=  [app=@tas =query]
-    ^-  (quip row _database)
+    ^-  (quip row ^database)
     ?+  -.query
-      [(get-rows:- +):(run-query app query ~) +>.$]
+      =+  (run-query app query ~)
+      [(~(get-rows tab -.-) +.-) database]
     ::
       %update        (update app query)
       %insert        `(insert-rows app^table.query rows.query)
@@ -47,65 +43,65 @@
   ++  add-table
     |=  [name=table-name =table]
     ^+  database
-    ?:  (~(has by tables) name)
+    ?:  (~(has by database) name)
       ~|("nectar: table with that id already exists" !!)
-    =+  (~(create tab table) ~)
-    +>.$(tables (~(put by tables) name -))
+    (~(put by database) name (~(create tab table) ~))
   ::
   ++  insert-rows
     |=  [name=table-name rows=(list *)]
     ^+  database
-    =/  tab  (~(got by tables) name)
-    =-  (add-tab name (insert:tab - update=%.n))
+    =/  =table  (~(got by database) name)
+    %+  ~(put by database)  name
+    =-  (~(insert tab table) - update=%.n)
     `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
   ++  update-rows
     |=  [name=table-name rows=(list *)]
     ^+  database
-    =/  tab  (~(got by tables) name)
-    =-  (add-tab name (insert:tab - update=%.y))
+    =/  =table  (~(got by database) name)
+    %+  ~(put by database)  name
+    =-  (~(insert tab table) - update=%.y)
     `(list row)`(turn rows |=(i=* !<(row [-:!>(*row) i])))
   ::
   ++  delete
     |=  [name=table-name where=condition]
     ^+  database
-    =/  tab  (~(got by tables) name)
-    =/  query-key  primary-key.table:tab
-    (add-tab name (delete:tab query-key where))
+    =/  =table  (~(got by database) name)
+    ::  TODO intelligent selection here
+    =/  query-key  primary-key.table
+    %+  ~(put by database)  name
+    (~(delete tab table) query-key where)
   ::
   ++  rename-table
     |=  [old=table-name new=table-name]
     ^+  database
-    +>.$(tables (~(put by (~(del by tables) old)) new (~(got by tables) old)))
+    %+  ~(put by (~(del by database) old))
+      new
+    (~(got by database) old)
   ::
   ++  drop-table
     |=  name=table-name
     ^+  database
-    +>.$(tables (~(del by tables) name))
-  ::
-  ++  add-tab
-    |=  [name=table-name tab=_tab]
-    ^+  database
-    +>.$(tables (~(put by tables) name tab))
+    (~(del by database) name)
   ::
   ++  update
     |=  [app=@tas =query]
-    ^-  (quip row _database)
+    ^-  (quip row ^database)
     ?>  ?=(%update -.query)
-    =/  tab=_tab  (~(got by tables) app^table.query)
-    =^  rows  tab
-      (update:tab primary-key.table:tab where.query cols.query)
-    [rows +>.$(tables (~(put by tables) app^table.query tab))]
+    =/  =table  (~(got by database) app^table.query)
+    =^  rows  table
+      (~(update tab table) primary-key.table where.query cols.query)
+    [rows (~(put by database) app^table.query table)]
   ::
   ::  run a NON-MUTATING query and get a list of rows as a result
   ::
   ++  run-query
     |=  [app=@tas =query query-cols=(list column-name)]
-    ^-  [_tab (list column-name)]
+    ^-  [table (list column-name)]
     ?>  ?=(?(%select %project %theta-join) -.query)
-    =/  [left-tab=_tab query-cols=(list column-name)]
+    =/  [left-tab=table query-cols=(list column-name)]
       ?@  table.query
-        [(~(got by tables) app^table.query) query-cols]
+        [(~(got by database) app^table.query) query-cols]
       $(query table.query)
     ::  here we make smart choices
     ::  we can inspect the query to see what index might be the most useful
@@ -119,49 +115,45 @@
         ::  optimization is possible?
         ~
       ::
-          ::  ?(%select %theta-join)
-          ::  the fact that this doesn't work SUCKS ASS
           %select
-        (choose-key table:left-tab where.query)
+        (choose-key left-tab where.query)
           %theta-join
-        (choose-key table:left-tab where.query)
+        (choose-key left-tab where.query)
       ==
     ?-    -.query
         %select
       =?    index
           ?=(~ index)
-        primary-key.table:left-tab
-      :-  (select:left-tab index where.query)
-      index
+        primary-key.left-tab
+      [(~(select tab left-tab) index where.query) index]
     ::
         %project
       =?    index
           ?=(~ index)
-        primary-key.table:left-tab
-      :-  (project:left-tab index cols.query)
-      index
+        primary-key.left-tab
+      [(~(project tab left-tab) index cols.query) index]
     ::
         %theta-join
       =?    index
           ?=(~ index)
-        primary-key.table:left-tab
-      =/  right-tab=_tab
+        primary-key.left-tab
+      =/  right-tab=table
         ?@  with.query
-          (~(got by tables) app^with.query)
+          (~(got by database) app^with.query)
         -:$(query with.query)
       =/  with=(pair schema (list row))
-        :-  schema.table:right-tab
-        (get-rows:right-tab primary-key.table:right-tab)
+        :-  schema.right-tab
+        (~(get-rows tab right-tab) primary-key.right-tab)
       =/  new-key=key-type
         :*  %+  weld
-              %+  turn  primary-key.table:left-tab
+              %+  turn  primary-key.left-tab
               |=(name=term (cat 3 'l-' name))
-            %+  turn  primary-key.table:right-tab
+            %+  turn  primary-key.right-tab
             |=(name=term (cat 3 'r-' name))
             %.y  ~  %.n  %.n  ::  important
         ==
-      =.  left-tab  (cross:left-tab index new-key with)
-      :-  (select:left-tab cols.new-key where.query)
+      =.  left-tab  (~(cross tab left-tab) index new-key with)
+      :-  (~(select tab left-tab) cols.new-key where.query)
       cols.new-key
     ==
   ::
@@ -193,8 +185,7 @@
 ::  table edit engine
 ::
 ++  tab
-  =|  =table
-  |%
+  |_  =table
   ++  col
     |%
     ++  ord
@@ -266,8 +257,8 @@
         |=  col=term
         (snag spot:(~(got by schema.table) col) row)
       name^(list-to-record name lis)
-    ::  return modified tab core
-    +>.$
+    ::  return new table
+    table
   ::
   ::  produces a list of rows from a record
   ::
@@ -349,7 +340,7 @@
   ::
   ++  select
     |=  [at-key=(list term) where=condition]
-    ^+  tab
+    ^+  table
     ::  ~&  >  "%nectar: performing select"
     ::  ~>  %bout
     =?    at-key
@@ -359,7 +350,7 @@
     =/  =key-type   (~(got by indices.table) at-key)
     ::  if we have a keyed record for our selector,
     ::  we can use map operations directly
-    =-  +>.$(records.table (~(put by records.table) at-key -))
+    =-  table(records (~(put by records.table) at-key -))
     |-
     ^-  record
     ?-    -.where
@@ -543,7 +534,7 @@
   ::
   ++  insert
     |=  [rows=(list row) update=?]
-    ^+  tab
+    ^+  table
     ::  ~&  >  "%nectar: performing insert/update"
     ::  ~>  %bout
     =.  records.table
@@ -611,7 +602,7 @@
         =+  (get:mm p.record key.i.lis)
         (~(put by (fall - ~)) pri row.i.lis)
       ==
-    +>.$
+    table
   ::
   ::  produces a new table with rows meeting the condition
   ::  deleted across all records. after deleting records,
@@ -620,7 +611,7 @@
   ::
   ++  delete
     |=  [at-key=(list term) where=condition]
-    ^+  tab
+    ^+  table
     ::  ~&  >  "%nectar: performing delete"
     ::  ~>  %bout
     =?    at-key
@@ -629,7 +620,7 @@
     =/  =key-type  (~(got by indices.table) at-key)
     =/  rec        (~(got by records.table) at-key)
     ?.  clustered.key-type
-      =/  del  (~(got by records.table:(select at-key where)) at-key)
+      =/  del  (~(got by records:(select at-key where)) at-key)
       ?:  ?=(%& -.rec)
         ?>  ?=(%& -.del)
         ::  map
@@ -655,7 +646,7 @@
   ::
   ++  update
     |=  [at-key=(list term) where=condition cols=(list [term $-(value value)])]
-    ^-  (quip row _tab)
+    ^-  (quip row ^table)
     =?    at-key
         ?=(~ at-key)
       primary-key.table
@@ -667,7 +658,7 @@
       func
     =/  new-rows
       %+  turn
-        `(list row)`(get-rows:(select at-key where) at-key)
+        `(list row)`(~(get-rows tab (select at-key where)) at-key)
       |=  =row
       =<  p
       %^  spin  row  0
@@ -682,7 +673,7 @@
   ::
   ++  project
     |=  [at-key=(list term) cols=(list term)]
-    ^+  tab
+    ^+  table
     ::  ~&  >  "%nectar: performing projection"
     ::  ~>  %bout
     ::  need to iterate through all rows, so no need
@@ -712,14 +703,14 @@
     =.  schema.table  new-schema
     =.  records.table
       [at-key^(list-to-record at-key lis) ~ ~]
-    +>.$
+    table
   ::
   ::  cross-product: combinatorily join two records
   ::  places the result as a record -- you choose the key
   ::
   ++  cross
     |=  [at-key=(list term) new-key=key-type with=(pair schema (list row))]
-    ^+  tab
+    ^+  table
     ::  ~&  >  "%nectar: performing cross-product"
     ::  ~>  %bout
     =/  l  ~(wyt by schema.table)
@@ -748,7 +739,7 @@
     =.  primary-key.table  cols.new-key
     =.  records.table
       [cols.new-key^(list-to-record cols.new-key lis) ~ ~]
-    +>.$
+    table
   ::
   ::  union: concatenate two records
   ::

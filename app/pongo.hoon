@@ -17,13 +17,9 @@
 ::
 ::  %pongo agent state
 ::
-+$  versioned-state
-  $%  state-1
-      state-2
-  ==
-+$  state-1
-  $:  %1  ::  "deep state"
-      db=_database:nectar
++$  state-0
+  $:  %0  ::  "deep state" (TODO get rid of)
+      =database:nectar
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
       blocked=(set @p)
@@ -31,20 +27,7 @@
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
       ::  "ephemeral state"
-      undelivered=(map @uvH [message fe-id=@t want=(set @p)])
-      pending-pings=(jar [conversation-id message-id] pending-ping)
-  ==
-+$  state-2
-  $:  %2  ::  "deep state"
       total-unread=@ud
-      db=_database:nectar
-      tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
-      ::  "configuration state"
-      blocked=(set @p)
-      =notif-settings
-      invites=(map conversation-id [from=@p =conversation])
-      invites-sent=(jug conversation-id @p)
-      ::  "ephemeral state"
       undelivered=(map @uvH [message fe-id=@t want=(set @p)])
       pending-pings=(jar [conversation-id message-id] pending-ping)
   ==
@@ -52,9 +35,9 @@
 --
 ::
 ^-  agent:gall
-%+  verb  &
+%+  verb  |
 %-  agent:dbug
-=|  state=state-2
+=|  state=state-0
 =<  |_  =bowl:gall
     +*  this  .
         hc    ~(. +> bowl)
@@ -63,27 +46,25 @@
     ++  on-init
       =-  `this(state -)
       ::  produce a conversations table with saved schema and indices
-      :+  %2  0
-      :_  [~ ~ ['' '' %low] ~ ~ ~ ~]
-      %+  add-table:~(. database:nectar ~)
-        %pongo^%conversations
-      ^-  table:nectar
-      :^    (make-schema:nectar conversations-schema)
-          primary-key=~[%id]
-        (make-indices:nectar conversations-indices)
-      ~
+      =/  initial-db=database:nectar
+        %+  ~(add-table db:nectar *database:nectar)
+          %pongo^%conversations
+        ^-  table:nectar
+        :^    (make-schema:nectar conversations-schema)
+            primary-key=~[%id]
+          (make-indices:nectar conversations-indices)
+        ~
+      [%0 initial-db ~ ~ ['' '' %low] ~ ~ 0 ~ ~]
     ::
     ++  on-save  !>(state)
     ::
     ++  on-load
-      |=  =vase
+      |=  old=vase
       ^-  (quip card _this)
-      =/  old=(unit versioned-state)
-        (mole |.(!<(versioned-state vase)))
-      ?~  old  on-init
-      ?-  -.u.old
-        %1  `this(state [%2 0 +.u.old])
-        %2  `this(state u.old)
+      ::  nuke our state if it's of an unsupported version
+      ::  note that table schemas can change without causing a state change
+      ?+  -.q.old  on-init
+        %0  `this(state !<(state-0 old))
       ==
     ::
     ++  on-poke
@@ -168,6 +149,7 @@
     :~  ::  remove this to turn off auto-accept
         %+  ~(poke pass:io /accept-invite)  [our.bowl %pongo]
         pongo-action+!>(`action`[%accept-invite id.conversation.ping])
+      ::
         (give-update [%invite conversation.ping])
     ==
   =/  =conversation-id
@@ -180,6 +162,8 @@
   ?~  conv=(fetch-conversation conversation-id)
     ::  we got pinged for a conversation we don't know about
     ::  be optimistic and request an invite!
+    ?<  =(our src):bowl
+    ?<  ?=(%invite-request -.ping)
     ~&  >>  "%pongo: trying to re-join missing convo..."
     :_  state  :_  ~
     %+  ~(poke pass:io /request-invite-for-missing-convo)
@@ -210,8 +194,8 @@
       ::  we *do* send delivered receipts to those we have blocked.
       ?.  =(%member-remove kind.message)
         [(delivered-card author.message id.convo message-hash)^~ state]
-      =.  db.state
-        %+  update-rows:db.state  %pongo^%conversations
+      =.  database.state
+        %+  ~(update-rows db:nectar database.state)  %pongo^%conversations
         ~[convo(members.p.meta (~(del in members.p.meta.convo) author.message))]
       [(graph-del-tag author.message name.convo)^~ state]
     ::
@@ -271,14 +255,14 @@
       ==
     ::  if we have pending edits/reactions to message, apply them now
     =.  message  (apply-pending-pings message id.convo)
-    ~?  ?|  !=(our.bowl author.message)
-            ?=(?(%member-add %change-name) kind.message)
-        ==
-      (print-message message)
-    =.  db.state
-      (update-rows:db.state %pongo^%conversations ~[convo])
-    =.  db.state
-      (insert-rows:db.state %pongo^messages-table-id.convo ~[message])
+    =.  database.state
+      %+  ~(update-rows db:nectar database.state)
+        %pongo^%conversations
+      ~[convo]
+    =.  database.state
+      %+  ~(insert-rows db:nectar database.state)
+        %pongo^id.convo
+      ~[message]
     :_  state
     %+  weld  cards
     :~  (delivered-card author.message id.convo message-hash)
@@ -293,10 +277,10 @@
       =+  [[id.convo on.ping] [%edit src.bowl edit.ping]]
       `state(pending-pings (~(add ja pending-pings.state) -))
     ::
-    =^  edited  db.state
+    =^  edited  database.state
       =*  v  value:nectar
-      %+  q:db.state  %pongo
-      :^  %update  messages-table-id.convo
+      %+  ~(q db:nectar database.state)  %pongo
+      :^  %update  id.convo
         :+  %and  [%s %id %& %eq on.ping]
         :+  %and  [%s %author %& %eq src.bowl]
         ::  i just like doing it this way
@@ -316,11 +300,9 @@
     ?:  (gth on.ping last-message.convo)
       =+  [[id.convo on.ping] [%react src.bowl reaction.ping]]
       `state(pending-pings (~(add ja pending-pings.state) -))
-    ::
-    ~?  !=(our src):bowl  (print-reaction src.bowl ping)
-    =^  reacted  db.state
-      %+  q:db.state  %pongo
-      :^  %update  messages-table-id.convo
+    =^  reacted  database.state
+      %+  ~(q db:nectar database.state)  %pongo
+      :^  %update  id.convo
         [%s %id %& %eq on.ping]
       :_  ~  :-  %reactions
       |=  v=value:nectar
@@ -469,18 +451,17 @@
         ~|("pongo: error: tried to make group with <3 members" !!)
       `@ux`(sham (cat 3 our.bowl eny.bowl))
     ::  TODO: fix this in a more permanent way?
-    =?    db.state
+    =?    database.state
         ?^  have=(fetch-conversation id)
           ?.  deleted.u.have
             ~|("pongo: error: duplicate conversation ID" !!)
           %.y
         %.n
       ::  drop an old messages-table if replacing deleted convo
-      (drop-table:db.state %pongo^(sham id))
+      (~(drop-table db:nectar database.state) %pongo^(sham id))
     ::
     =/  convo=conversation
       :*  `@ux`id
-          messages-table-id=`@ux`(sham id)
           name=(make-unique-name name.action)
           last-active=now.bowl
           last-message=0
@@ -492,9 +473,11 @@
           ~
       ==
     ::  add this conversation to our table and create a messages table for it
-    =.  db.state  (update-rows:db.state %pongo^%conversations ~[convo])
-    =.  db.state
-      %+  add-table:db.state  %pongo^messages-table-id.convo
+    =.  database.state
+      (~(update-rows db:nectar database.state) %pongo^%conversations ~[convo])
+    =.  database.state
+      %+  ~(add-table db:nectar database.state)
+        %pongo^id.convo
       :^    (make-schema:nectar messages-schema)
           primary-key=~[%id]
         (make-indices:nectar messages-indices)
@@ -543,9 +526,9 @@
   ::
       %leave-conversation
     ::  leave a conversation we're currently in
-    =.  db.state
+    =.  database.state
       =<  +
-      %+  q:db.state  %pongo
+      %+  ~(q db:nectar database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
       ~[[%deleted |=(v=value:nectar %.y)]]
@@ -617,8 +600,8 @@
       =/  just-read  (sub message-id.action last-read.u.convo)
       ?:  (gth just-read total-unread.state)  0
       (sub total-unread.state just-read)
-    =-  `state(db -)
-    %+  update-rows:db.state
+    =-  `state(database -)
+    %+  ~(update-rows db:nectar database.state)
       %pongo^%conversations
     ~[u.convo(last-read message-id.action)]
   ::
@@ -645,29 +628,30 @@
       (~(got by invites.state) conversation-id.action)
     =.  members.p.meta.convo
       (~(put in members.p.meta.convo) our.bowl)
-    =^  convo  db.state
+    =^  convo  database.state
       ?~  hav=(fetch-conversation id.convo)
         ::  we've never been in this conversation before
         =.  name.convo  (make-unique-name name.convo)
-        =.  db.state
-          =+  %+  insert-rows:db.state
+        =.  database.state
+          =+  %+  ~(insert-rows db:nectar database.state)
                 %pongo^%conversations
               ~[convo(last-active now.bowl, last-read 0)]
-          %+  add-table:-
-            %pongo^messages-table-id.convo
+          %+  ~(add-table db:nectar -)
+            %pongo^id.convo
           :^    (make-schema:nectar messages-schema)
               primary-key=~[%id]
             (make-indices:nectar messages-indices)
           ~
-        [convo db.state]
+        [convo database.state]
       ::  we've been here before, revive "deleted" convo
       ?.  deleted.u.hav
         ::  we've been here before and we never really left!
-        [convo db.state]
+        [convo database.state]
       :-  convo
       ::  delete old messages table
-      =-  (drop-table:- %pongo^messages-table-id.convo)
-      %+  update-rows:db.state  %pongo^%conversations
+      =-  (~(drop-table db:nectar -) %pongo^id.convo)
+      %+  ~(update-rows db:nectar database.state)
+        %pongo^%conversations
       ~[convo(last-active now.bowl, last-read 0)]
     :_  state(invites (~(del by invites.state) id.convo))
     %+  snoc
@@ -710,7 +694,7 @@
     =/  ta-now  `@ta`(scot %da now.bowl)
     =/  start-args
       :^  ~  `tid  byk.bowl(r da+now.bowl)
-      search+!>(`search`[db.state +.+.action])
+      search+!>(`search`[database.state +.+.action])
     :_  state
     :~  %+  ~(poke pass:io /thread/[ta-now])
           [our.bowl %spider]
@@ -732,18 +716,18 @@
     `state(notif-settings notif-settings.action)
   ::
       %mute-conversation
-    =.  db.state
+    =.  database.state
       =<  +
-      %+  q:db.state  %pongo
+      %+  ~(q db:nectar database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
       ~[[%muted |=(v=value:nectar %.y)]]
     `state
   ::
       %unmute-conversation
-    =.  db.state
+    =.  database.state
       =<  +
-      %+  q:db.state  %pongo
+      %+  ~(q db:nectar database.state)  %pongo
       :^  %update  %conversations
         [%s %id %& %eq conversation-id.action]
       ~[[%muted |=(v=value:nectar %.n)]]
@@ -803,15 +787,15 @@
     %+  turn
       ::  only get undeleted conversations
       =<  -
-      %+  q:db.state  %pongo
+      %+  ~(q db:nectar database.state)  %pongo
       [%select %conversations where=[%s %deleted %& %eq %.n]]
     |=  =row:nectar
     =/  convo=conversation
       !<(conversation [-:!>(*conversation) row])
     =/  last-message=(unit message)
       =-  ?~(-.- ~ `!<(message [-:!>(*message) (head -.-)]))
-      %+  q:db.state  %pongo
-      [%select messages-table-id.convo where=[%s %id %& %eq last-message.convo]]
+      %+  ~(q db:nectar database.state)  %pongo
+      [%select id.convo where=[%s %id %& %eq last-message.convo]]
     :+  convo
       last-message
     ?~  last-message  0
@@ -828,7 +812,7 @@
     ?~  convo=(fetch-conversation convo-id)
       ~
     %+  turn
-      -:(q:db.state %pongo [%select messages-table-id.u.convo where=[%n ~]])
+      -:(~(q db:nectar database.state) %pongo [%select id.u.convo where=[%n ~]])
     |=  =row:nectar
     !<(message [-:!>(*message) row])
   ::
@@ -849,8 +833,8 @@
     ?~  convo=(fetch-conversation convo-id)  ~
     %+  turn
       =<  -
-      %+  q:db.state  %pongo
-      :+  %select  messages-table-id.u.convo
+      %+  ~(q db:nectar database.state)  %pongo
+      :+  %select  id.u.convo
       :+  %and
         [%s %id %& %gte start]
       [%s %id %& %lte end]
@@ -870,8 +854,8 @@
     :-  -:!>(*message)
     %-  head
     =<  -
-    %+  q:db.state  %pongo
-    :+  %select  messages-table-id.u.convo
+    %+  ~(q db:nectar database.state)  %pongo
+    :+  %select  id.u.convo
     [%s %id %& %eq message-id]
   ::
   ::  get all sent and received invites
@@ -889,12 +873,12 @@
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  -:(q:db.state %pongo [%select %conversations where=[%s %id %& %eq id]])
+  -:(~(q db:nectar database.state) %pongo [%select %conversations where=[%s %id %& %eq id]])
 ::
 ++  make-unique-name
   |=  given=@t
   ^-  @t
-  =+  -:(q:db.state %pongo [%select %conversations [%s %name %& %eq given]])
+  =+  -:(~(q db:nectar database.state) %pongo [%select %conversations [%s %name %& %eq given]])
   ?:  ?=(~ -)  given
   (rap 3 ~[given '-' (scot %ud `@`(end [3 1] eny.bowl))])
 ::

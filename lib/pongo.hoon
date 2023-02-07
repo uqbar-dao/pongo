@@ -67,7 +67,7 @@
 ::
 ::  type used for search threads
 +$  search
-  $:  db=_database:nectar
+  $:  =database:nectar
       only-in=(unit conversation-id)
       only-author=(unit @p)
       phrase=@t
@@ -76,14 +76,9 @@
 ++  do-search
   |=  search
   ^-  (list [conversation-id message])
-  =/  table-id
-    ~|  "%pongo: couldn't find conversation"
-    =<  messages-table-id
-    %-  need
-    =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-    -:(q:db %pongo [%select %conversations where=[%s %id %& %eq (need only-in)]])
+  ::  TODO handle searches across all conversations
   %+  turn
-    =-  -:(q:db %pongo [%select table-id where=-])
+    =-  -:(~(q db:nectar database) %pongo [%select (need only-in) where=-])
     =+  [%s %content %& %text-find (trip phrase)]
     ?~  only-author  -
     [%and [%s %author %& %eq u.only-author] -]

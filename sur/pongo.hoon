@@ -76,15 +76,14 @@
 ::
 ++  conversations-schema
   :~  [%id [0 | %ux]]
-      [%messages-table-id [[1 | %ux]]]
-      [%name [2 | %t]]
-      [%last-active [3 | %da]]
-      [%last-message [4 | %ud]]
-      [%last-read [5 | %ud]]  ::  id of message we last saw
-      [%router [6 | %p]]
-      [%members [7 | %blob]]
-      [%deleted [8 | %f]]
-      [%muted [9 | %f]]
+      [%name [1 | %t]]
+      [%last-active [2 | %da]]
+      [%last-message [3 | %ud]]
+      [%last-read [4 | %ud]]  ::  id of message we last saw
+      [%router [5 | %p]]
+      [%members [6 | %blob]]
+      [%deleted [7 | %f]]
+      [%muted [8 | %f]]
   ==
 ::
 ++  conversations-indices
@@ -110,7 +109,6 @@
 ::
 +$  conversation
   $:  id=conversation-id
-      messages-table-id=@ux
       name=@t
       last-active=@da
       last-message=message-id
@@ -193,8 +191,6 @@
   $%  [%conversations (list conversation-info)]
       [%message-list (list message)]
       [%message =conversation-id =message]  ::  tell frontend about new message
-      ::  [%edited =conversation-id on=message-id edit=@t]
-      ::  [%reacted =conversation-id on=message-id =reaction]
       [%invite conversation]                                    ::  new invite
       [%sending =conversation-id identifier=@t]
       [%delivered =conversation-id identifier=@t]
