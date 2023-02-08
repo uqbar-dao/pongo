@@ -555,6 +555,16 @@
       ==
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
+    ::  update last-read message in convo, since if we are sending a
+    ::  message, we've definitely read all previous messages
+    =.  total-unread.state
+      =/  just-read  (sub [last-message last-read]:u.convo)
+      ?:  (gth just-read total-unread.state)  0
+      (sub total-unread.state just-read)
+    =.  database.state
+      %+  ~(update-rows db:nec database.state)
+        %pongo^%conversations
+      ~[u.convo(last-read last-message.u.convo)]
     :_  ?:  (lth delivery-tracking-cutoff ~(wyt in members.p.meta.u.convo))
           state
         =-  state(undelivered (~(put by undelivered.state) hash -))
