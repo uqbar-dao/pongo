@@ -671,10 +671,18 @@
         [convo database.state]
       :-  convo
       ::  delete old messages table
-      =-  (~(drop-table db:nec -) %pongo^id.convo)
-      %+  ~(update-rows db:nec database.state)
-        %pongo^%conversations
-      ~[convo(last-active now.bowl, last-read 0)]
+      =+  (~(drop-table db:nec database.state) %pongo^id.convo)
+      ::  update entry for this convo
+      =+  %+  ~(update-rows db:nec -)
+            %pongo^%conversations
+          ~[convo(last-active now.bowl, last-read 0)]
+      ::  add new messages table
+      %+  ~(add-table db:nec -)
+        %pongo^id.convo
+      :^    (make-schema:nec messages-schema)
+          primary-key=~[%id]
+        (make-indices:nec messages-indices)
+      ~
     :_  state(invites (~(del by invites.state) id.convo))
     %+  snoc
       %+  turn  ~(tap in members.p.meta.convo)
