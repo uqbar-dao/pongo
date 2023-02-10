@@ -36,7 +36,6 @@
       =database:nec
       tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
       ::  "configuration state"
-      blocked=(set @p)
       =notif-settings
       invites=(map conversation-id [from=@p =conversation])
       invites-sent=(jug conversation-id @p)
@@ -67,7 +66,7 @@
             primary-key=~[%id]
           (make-indices:nec conversations-indices)
         ~
-      [%1 initial-db ~ ~ ['' '' %low] ~ ~ ~ ~]
+      [%1 initial-db ~ ['' '' %low] ~ ~ ~ ~]
     ::
     ++  on-save  !>(state)
     ::
@@ -78,9 +77,9 @@
       ::  note that table schemas can change without causing a state change
       ?+    -.q.old  on-init
           %0
-        ::  remove total-unread
+        ::  remove total-unread and blocked
         =/  s-0  !<(state-0 old)
-        `this(state [%1 -.+ -.+> -.+>+ -.+>+> -.+>+>+ -.+>+>+> +>+>+>+>]:s-0)
+        `this(state [%1 -.+ -.+> -.+>+> -.+>+>+ -.+>+>+> +>+>+>+>]:s-0)
           %1
         `this(state !<(state-1 old))
       ==
@@ -160,8 +159,6 @@
     (give-update [%delivered conversation-id.ping fe-id.u.has])^~
   ?:  ?=(%invite -.ping)
     ::  we've received an invite to a conversation
-    ::  ignore invites from blocked ships
-    ?:  (~(has in blocked.state) src.bowl)  `state
     =+  [src.bowl conversation.ping]
     :_  state(invites (~(put by invites.state) id.conversation.ping -))
     :~  ::  remove this to turn off auto-accept
@@ -206,16 +203,6 @@
       ~&  >>>  "%pongo: rejecting message, invalid signature"  `state
     ?.  (~(has in members.p.meta.convo) author.message)
       ~&  >>>  "%pongo: rejecting message from non-member"  `state
-    ?:  (~(has in blocked.state) author.message)
-      ::  ignore any messages from blocked ships unless
-      ::  it's them leaving the conversation!
-      ::  we *do* send delivered receipts to those we have blocked.
-      ?.  =(%member-remove kind.message)
-        [(delivered-card author.message id.convo message-hash)^~ state]
-      =.  database.state
-        %+  ~(update-rows db:nec database.state)  %pongo^%conversations
-        ~[convo(members.p.meta (~(del in members.p.meta.convo) author.message))]
-      [(graph-del-tag author.message name.convo)^~ state]
     ::
     ::  enforce that convo name changes, member adds/removes, and leader
     ::  adds/removes follow the rules of this conversation (open/managed)
@@ -358,8 +345,6 @@
     ::  someone wants to join one of our conversations
     ::  if we don't have ID, or convo is not FFA, reject
     ::  otherwise send them an invite! (can remove this)
-    ::  ignore requests from blocked ships
-    ?:  (~(has in blocked.state) src.bowl)  `state
     ?>  ?=(?(%open %dm) -.p.meta.convo)
     :_  state(invites-sent (~(put ju invites-sent.state) id.convo src.bowl))
     :_  ~
@@ -716,14 +701,6 @@
     %+  ~(poke pass:io /request-invite)  [to.action %pongo]
     ping+!>(`ping`[%invite-request conversation-id.action])
   ::
-      %block
-    ::  add a ship to our block-list, they cannot message us or invite us
-    `state(blocked (~(put in blocked.state) who.action))
-  ::
-      %unblock
-    ::  remove a ship from our block-list
-    `state(blocked (~(del in blocked.state) who.action))
-  ::
       %search
     ::  search in messages for a phrase. can filter by conversation
     ::  or author. to get results, first subscribe to /search-results
@@ -819,11 +796,6 @@
   |=  =path
   ^-  (unit (unit cage))
   ?+    path  ~|("unexpected scry into {<dap.bowl>} on path {<path>}" !!)
-  ::
-  ::  see our blocklist
-  ::
-      [%x %blocklist ~]
-    ``pongo-update+!>(`pongo-update`[%blocklist blocked.state])
   ::
   ::  get all conversations and get unread count + most recent message
   ::

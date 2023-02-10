@@ -170,9 +170,6 @@
       [%reject-invite =conversation-id]
       [%make-invite-request to=@p =conversation-id]  ::  FFA convos only!
       ::
-      [%block who=@p]
-      [%unblock who=@p]
-      ::
       $:  %search  uid=@ux
           only-in=(unit conversation-id)
           only-author=(unit @p)
