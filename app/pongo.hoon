@@ -742,8 +742,15 @@
       [our.bowl %spider]
     spider-stop+!>([tid %.y])
   ::
-      %set-notifications
-    `state(notif-settings notif-settings.action)
+      %set-notif-token
+    :-  ~
+    %=  state
+      expo-token.notif-settings  expo-token.action
+      ship-url.notif-settings    ship-url.action
+    ==
+  ::
+      %set-notif-level
+    `state(level.notif-settings level.action)
   ::
       %mute-conversation
     =.  database.state
