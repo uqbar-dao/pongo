@@ -177,6 +177,7 @@
       ==
       [%cancel-search uid=@ux]
       ::
+      [%set-notifications =notif-settings]
       [%set-notif-token expo-token=@t ship-url=@t]
       [%set-notif-level level=?(%off %low %medium %high)]
       [%mute-conversation =conversation-id]

@@ -51,6 +51,8 @@
         ::
         [%cancel-search (ot ~[[%uid (se %ux)]])]
         ::
+        :-  %set-notifications
+        (ot ~[[%expo-token so] [%ship-url so] [%level (se %tas)]])
         [%set-notif-token (ot ~[[%expo-token so] [%ship-url so]])]
         [%set-notif-level (ot ~[[%level (se %tas)]])]
         ::

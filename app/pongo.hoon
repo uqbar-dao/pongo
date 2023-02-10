@@ -728,6 +728,9 @@
       [our.bowl %spider]
     spider-stop+!>([tid %.y])
   ::
+      %set-notifications
+    `state(notif-settings notif-settings.action)
+  ::
       %set-notif-token
     :-  ~
     %=  state
