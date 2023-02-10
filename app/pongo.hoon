@@ -31,13 +31,26 @@
       undelivered=(map @uvH [message fe-id=@t want=(set @p)])
       pending-pings=(jar [conversation-id message-id] pending-ping)
   ==
++$  state-1
+  $:  %1  ::  "deep state" (TODO get rid of)
+      =database:nec
+      tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
+      ::  "configuration state"
+      blocked=(set @p)
+      =notif-settings
+      invites=(map conversation-id [from=@p =conversation])
+      invites-sent=(jug conversation-id @p)
+      ::  "ephemeral state"
+      undelivered=(map @uvH [message fe-id=@t want=(set @p)])
+      pending-pings=(jar [conversation-id message-id] pending-ping)
+  ==
 +$  card  card:agent:gall
 --
 ::
 ^-  agent:gall
 %+  verb  |
 %-  agent:dbug
-=|  state=state-0
+=|  state=state-1
 =<  |_  =bowl:gall
     +*  this  .
         hc    ~(. +> bowl)
@@ -54,7 +67,7 @@
             primary-key=~[%id]
           (make-indices:nec conversations-indices)
         ~
-      [%0 initial-db ~ ~ ['' '' %low] ~ ~ 0 ~ ~]
+      [%1 initial-db ~ ~ ['' '' %low] ~ ~ ~ ~]
     ::
     ++  on-save  !>(state)
     ::
@@ -63,8 +76,13 @@
       ^-  (quip card _this)
       ::  nuke our state if it's of an unsupported version
       ::  note that table schemas can change without causing a state change
-      ?+  -.q.old  on-init
-        %0  `this(state !<(state-0 old))
+      ?+    -.q.old  on-init
+          %0
+        ::  remove total-unread
+        =/  s-0  !<(state-0 old)
+        `this(state [%1 -.+ -.+> -.+>+ -.+>+> -.+>+>+ -.+>+>+> +>+>+>+>]:s-0)
+          %1
+        `this(state !<(state-1 old))
       ==
     ::
     ++  on-poke
@@ -208,7 +226,6 @@
     =.  timestamp.message   now.bowl
     =.  last-active.convo   now.bowl
     =.  last-message.convo  id.message
-    =.  total-unread.state  +(total-unread.state)
     =^  cards  convo
       ?-    kind.message
           ?(%text %code)
@@ -216,7 +233,7 @@
         ?:  muted.convo  `convo
         =-  ?~  -  `convo  [u.-^~ convo]
         %:  give-push-notification
-            total-unread.state
+            get-total-unreads  ::  function
             convo  message
             notif-settings.state
             [our now]:bowl
@@ -557,10 +574,6 @@
       ~|("%pongo: couldn't find that conversation id" !!)
     ::  update last-read message in convo, since if we are sending a
     ::  message, we've definitely read all previous messages
-    =.  total-unread.state
-      =/  just-read  (sub [last-message last-read]:u.convo)
-      ?:  (gth just-read total-unread.state)  0
-      (sub total-unread.state just-read)
     =.  database.state
       %+  ~(update-rows db:nec database.state)
         %pongo^%conversations
@@ -609,10 +622,6 @@
     ?~  convo=(fetch-conversation conversation-id.action)
       ~|("%pongo: couldn't find that conversation id" !!)
     ?.  (gth message-id.action last-read.u.convo)  `state
-    =.  total-unread.state
-      =/  just-read  (sub message-id.action last-read.u.convo)
-      ?:  (gth just-read total-unread.state)  0
-      (sub total-unread.state just-read)
     =-  `state(database -)
     %+  ~(update-rows db:nec database.state)
       %pongo^%conversations
@@ -910,7 +919,24 @@
   |=  id=conversation-id
   ^-  (unit conversation)
   =-  ?~(- ~ `!<(conversation [-:!>(*conversation) (head -)]))
-  -:(~(q db:nec database.state) %pongo [%select %conversations where=[%s %id %& %eq id]])
+  =<  -
+  %+  ~(q db:nec database.state)  %pongo
+  [%select %conversations where=[%s %id %& %eq id]]
+::
+++  get-total-unreads
+  ^-  @ud
+  =<  q
+  %^    spin
+      =<  -
+      %+  ~(q db:nec database.state)  %pongo
+      [%select %conversations where=[%s %deleted %& %eq %.n]]
+    0
+  |=  [=row:nec i=@]
+  =+  !<(conversation [-:!>(*conversation) row])
+  :-  row
+  ?:  (gth [last-read last-message]:-)
+    i
+  (add i (sub [last-message last-read]:-))
 ::
 ++  message-poke
   |=  [to=@p =ping]
