@@ -265,6 +265,7 @@
       %-  pairs
       :~  ['conversation_id' s+(scot %ux conversation-id.upd)]
           ['identifier' s+identifier.upd]
+          ['message_id' s+(scot %ud message-id.upd)]
       ==
     ::
         %search-result

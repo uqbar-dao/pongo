@@ -192,7 +192,7 @@
       [%message =conversation-id =message]  ::  tell frontend about new message
       [%invite conversation]                                    ::  new invite
       [%sending =conversation-id identifier=@t]
-      [%delivered =conversation-id identifier=@t]
+      [%delivered =conversation-id identifier=@t =message-id]
       [%search-result (list [=conversation-id =message])]
       $:  %invites
           sent=(jug conversation-id @p)

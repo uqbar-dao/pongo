@@ -156,7 +156,7 @@
       `state(undelivered (~(put by undelivered.state) hash.ping u.has))
     :_  state(undelivered (~(del by undelivered.state) hash.ping))
     ?:  =('' fe-id.u.has)  ~
-    (give-update [%delivered conversation-id.ping fe-id.u.has])^~
+    (give-update [%delivered conversation-id.ping fe-id.u.has id.u.has])^~
   ?:  ?=(%invite -.ping)
     ::  we've received an invite to a conversation
     =+  [src.bowl conversation.ping]
@@ -199,6 +199,12 @@
     ::  add it to our messages table for that conversation
     ?>  =(src.bowl router.convo)
     =/  message-hash  (make-message-hash [content author timestamp]:message)
+    ::  if hash matches an undelivered message of ours, update that
+    ::  undelivered message with the id assigned by router
+    =/  has  (~(get by undelivered.state) message-hash)
+    =?    undelivered.state
+        ?=(^ has)
+      (~(put by undelivered.state) message-hash u.has(id id.message))
     ?.  (validate:sig our.bowl p.signature.message message-hash now.bowl)
       ~&  >>>  "%pongo: rejecting message, invalid signature"  `state
     ?.  (~(has in members.p.meta.convo) author.message)
@@ -269,9 +275,12 @@
       ~[message]
     :_  state
     %+  weld  cards
-    :~  (delivered-card author.message id.convo message-hash)
-        (give-update [%message id.convo message])
-    ==
+    :-  (give-update [%message id.convo message])
+    ?:  (lth delivery-tracking-cutoff ~(wyt in members.p.meta.convo))
+      ?.  =(our.bowl author.message)  ~
+      ?~  has  ~
+      (give-update [%delivered id.convo fe-id.u.has id.message])^~
+    (delivered-card author.message id.convo message-hash)^~
   ::
       %edit
     ::  we've received an edit of a message
@@ -937,8 +946,8 @@
 ++  give-update
   |=  upd=pongo-update
   ^-  card
-  ::  ~&  >>  "giving fact to frontend: "
-  ::  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
+  ~&  >>  "giving fact to frontend: "
+  ~&  >>  (crip (en-json:html (update-to-json:parsing upd)))
   (fact:io pongo-update+!>(upd) ~[/updates])
 ::
 ++  graph-add-tag
