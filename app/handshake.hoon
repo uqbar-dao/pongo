@@ -47,7 +47,7 @@
     ::  provide our most recent punch card
     ?~  latest.state  `this
     :_  this
-    ~[[%give %fact ~ signer-update+!>([%new-sig u.latest.state])]]
+    ~[[%give %fact ~ handshake-signer-update+!>([%new-sig u.latest.state])]]
   ::
       %reader-updates
     ::  provide updates on signatures we verify on this path
