@@ -220,17 +220,16 @@
     =.  last-active.convo   now.bowl
     =.  last-message.convo  id.message
     =^  cards  convo
-      ?-    kind.message
-          ?(%text %code)
-        ::  normal message
-        ?:  muted.convo  `convo
-        =-  ?~  -  `convo  [u.-^~ convo]
-        %:  give-push-notification
-            get-total-unreads  ::  function
-            convo  message
-            notif-settings.state
-            [our now]:bowl
-        ==
+      ?+    kind.message
+          ::  normal message
+          ?:  muted.convo  `convo
+          =-  ?~  -  `convo  [u.-^~ convo]
+          %:  give-push-notification
+              get-total-unreads  ::  function
+              convo  message
+              notif-settings.state
+              [our now]:bowl
+          ==
       ::
           %member-add
         =.  members.p.meta.convo
@@ -394,9 +393,7 @@
   |=  [=message convo=conversation]
   ^-  ?
   ?.  (gth id.message last-message.convo)  %.n
-  ?-    kind.message
-    ?(%text %code)  %.y
-  ::
+  ?+    kind.message  %.y
       %member-remove
     ?:  =(author.message (slav %p content.message))  %.y
     ?-  -.p.meta.convo
