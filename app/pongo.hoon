@@ -17,20 +17,6 @@
 ::
 ::  %pongo agent state
 ::
-+$  state-0
-  $:  %0  ::  "deep state" (TODO get rid of)
-      =database:nec
-      tagged=(map tag:s conversation-id)  ::  conversations linked to %posse
-      ::  "configuration state"
-      blocked=(set @p)
-      =notif-settings
-      invites=(map conversation-id [from=@p =conversation])
-      invites-sent=(jug conversation-id @p)
-      ::  "ephemeral state"
-      total-unread=@ud
-      undelivered=(map @uvH [message fe-id=@t want=(set @p)])
-      pending-pings=(jar [conversation-id message-id] pending-ping)
-  ==
 +$  state-1
   $:  %1  ::  "deep state" (TODO get rid of)
       =database:nec
@@ -75,13 +61,8 @@
       ^-  (quip card _this)
       ::  nuke our state if it's of an unsupported version
       ::  note that table schemas can change without causing a state change
-      ?+    -.q.old  on-init
-          %0
-        ::  remove total-unread and blocked
-        =/  s-0  !<(state-0 old)
-        `this(state [%1 -.+ -.+> -.+>+> -.+>+>+ -.+>+>+> +>+>+>+>]:s-0)
-          %1
-        `this(state !<(state-1 old))
+      ?+  -.q.old  on-init
+        %1  `this(state !<(state-1 old))
       ==
     ::
     ++  on-poke
@@ -220,17 +201,16 @@
     =.  last-active.convo   now.bowl
     =.  last-message.convo  id.message
     =^  cards  convo
-      ?-    kind.message
-          ?(%text %code)
-        ::  normal message
-        ?:  muted.convo  `convo
-        =-  ?~  -  `convo  [u.-^~ convo]
-        %:  give-push-notification
-            get-total-unreads  ::  function
-            convo  message
-            notif-settings.state
-            [our now]:bowl
-        ==
+      ?+    kind.message
+          ::  normal message
+          ?:  muted.convo  `convo
+          =-  ?~  -  `convo  [u.-^~ convo]
+          %:  give-push-notification
+              get-total-unreads  ::  function
+              convo  message
+              notif-settings.state
+              [our now]:bowl
+          ==
       ::
           %member-add
         =.  members.p.meta.convo
@@ -394,9 +374,7 @@
   |=  [=message convo=conversation]
   ^-  ?
   ?.  (gth id.message last-message.convo)  %.n
-  ?-    kind.message
-    ?(%text %code)  %.y
-  ::
+  ?+    kind.message  %.y
       %member-remove
     ?:  =(author.message (slav %p content.message))  %.y
     ?-  -.p.meta.convo

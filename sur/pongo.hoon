@@ -64,6 +64,11 @@
       %leader-add     ::  only for %many-leader
       %leader-remove  ::  only for %many-leader
       %change-router  ::  TBD
+      ::  special bespoke message types
+      %poll         ::  content is question being asked \n
+                    ::  first response \n second response \n ...
+      %send-tokens  ::  content is a (scot %ux transaction-hash)
+      %app-link     ::  content is @t link (everything after ship URL)
   ==
 ++  my-special-number  521.510.348.146  ::  `@`%reply, lol
 ::
