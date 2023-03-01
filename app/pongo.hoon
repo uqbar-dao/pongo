@@ -1,4 +1,4 @@
-/-  *pongo, s=social-graph
+/-  *pongo, s=social-graph, uqbar=zig-uqbar, wallet=zig-wallet
 /+  verb, dbug, default-agent, io=agentio,
     *pongo, nec=nectar, sig
 |%
@@ -73,6 +73,10 @@
           %ping                 (handle-ping:hc !<(ping vase))
           %pongo-action         (handle-action:hc !<(action vase))
           %social-graph-update  (handle-graph-update:hc !<(update:s vase))
+            %wallet-update
+          (handle-wallet-update:hc !<(wallet-update:wallet vase))
+            %uqbar-share-address
+          (handle-address-share:hc !<(share-address:uqbar vase))
         ==
       [cards this]
     ::
@@ -81,7 +85,7 @@
     ++  on-watch
       |=  =path
       ^-  (quip card _this)
-      ?>  =(src.bowl our.bowl)
+      ?>  =(src our):bowl
       ?+    path
           ~|("watch to erroneous path" !!)
       ::  path for frontend to connect to and receive
@@ -91,12 +95,25 @@
       ::  path for frontend to receive search results.
       ::  subscribe before poking %search with matching uid
         [%search-results @ ~]  `this
+      ::  path for token-send thread to receive info about a token send
+        [%token-send-updates ~]  `this
       ==
     ::
     ++  on-agent
       |=  [=wire =sign:agent:gall]
       ^-  (quip card _this)
       ?+    -.wire  (on-agent:def wire sign)
+          %send-tokens-thread
+        ?+    -.sign  (on-agent:def wire sign)
+            %fact
+          ?+    p.cage.sign  (on-agent:def wire sign)
+              %thread-fail
+            =/  err  !<((pair term tang) q.cage.sign)
+            %-  (slog leaf+"send-tokens thread failed: {(trip p.err)}" q.err)
+            `this
+          ==
+        ==
+      ::
           %thread
         ?+    -.sign  (on-agent:def wire sign)
             %fact
@@ -585,8 +602,20 @@
     :_  state
     %+  turn  ~(tap in members.p.meta.u.convo)
     |=  to=@p
-    %+  ~(poke pass:io /send-react)  [to %pongo]
+    %+  ~(poke pass:io /send-react)
+      [to %pongo]
     ping+!>(`ping`[%react [conversation-id on reaction]:action])
+  ::
+      %send-tokens
+    =/  tid  `@ta`(cat 3 'token-send_' (scot %uv (sham eny.bowl)))
+    =/  ta-now  `@ta`(scot %da now.bowl)
+    =/  start-args
+      :^  ~  `tid  byk.bowl(r da+now.bowl)
+      token-send+!>(`^action`action)
+    :_  state  :_  ~
+    %+  ~(poke pass:io /thread/[ta-now])
+      [our.bowl %spider]
+    spider-start+!>(start-args)
   ::
       %read-message
     ::  if read id is newer than current saved read id, replace in convo
@@ -780,6 +809,42 @@
     :-  %pongo-action
     !>  ^-  action
     [%send-message '' id.convo %member-remove (scot %p +.to.q.update) ~ ~]
+  ==
+::
+++  handle-wallet-update
+  |=  upd=wallet-update:wallet
+  ^-  (quip card _state)
+  ?+    -.upd  `state
+      %sequencer-receipt
+    :_  state  :_  ~
+    %+  fact:io
+      :-  %pongo-thread-update
+      !>  ^-  thread-update
+      [%finished +.+.upd]
+    ~[/token-send-updates]
+  ==
+::
+++  handle-address-share
+  |=  share=share-address:uqbar
+  ^-  (quip card _state)
+  :_  state  :_  ~
+  ?-    -.share
+      %request  !!
+      %deny
+    ::  surface this
+    %+  fact:io
+      :-  %pongo-thread-update
+      !>  ^-  thread-update
+      [%denied src.bowl]
+    ~[/token-send-updates]
+  ::
+      %share
+    ::  what we really want
+    %+  fact:io
+      :-  %pongo-thread-update
+      !>  ^-  thread-update
+      [%shared src.bowl address.share]
+    ~[/token-send-updates]
   ==
 ::
 ++  handle-scry

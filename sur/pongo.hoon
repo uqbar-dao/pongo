@@ -1,3 +1,4 @@
+/-  uqbar=zig-uqbar
 |%
 +$  notif-settings
   $:  expo-token=@t
@@ -167,6 +168,16 @@
       ==
       [%send-message-edit =conversation-id on=message-id edit=@t]
       [%send-reaction =conversation-id on=message-id =reaction]
+      ::
+      $:  %send-tokens
+          =conversation-id
+          from=@ux
+          contract=@ux
+          town=@ux
+          to=@p
+          amount=@ud
+          item=@ux
+      ==
       ::  frontend telling us we've seen up to message-id in convo
       [%read-message =conversation-id =message-id]
       ::
@@ -206,6 +217,12 @@
       [%blocklist (set @p)]
       [%notification convo-name=@t author=@p content=@t]
       [%notif-settings notif-settings]
+  ==
+::  updates we sent to token-send thread
++$  thread-update
+  $%  [%denied from=@p]
+      [%shared from=@p address=@ux]
+      [%finished sequencer-receipt:uqbar]
   ==
 ::
 +$  conversation-info
