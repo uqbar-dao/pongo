@@ -35,6 +35,17 @@
         :-  %send-reaction
         (ot ~[[%convo (se %ux)] [%on (se %ud)] [%reaction so]])
         ::
+        :-  %send-tokens
+        %-  ot
+        :~  [%convo (se %ux)]
+            [%from (se %ux)]
+            [%contract (se %ux)]
+            [%town (se %ux)]
+            [%to (se %p)]
+            [%amount (se %ud)]
+            [%item (se %ux)]
+        ==
+        ::
         [%read-message (ot ~[[%convo (se %ux)] [%message (se %ud)]])]
         [%make-invite (ot ~[[%to (se %p)] [%id (se %ux)]])]
         [%accept-invite (ot ~[[%id (se %ux)]])]
