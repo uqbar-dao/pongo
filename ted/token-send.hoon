@@ -1,4 +1,4 @@
-/-  spider, pongo, uqbar=zig-uqbar
+/-  spider, pongo, uqbar=zig-uqbar, wallet=zig-wallet
 /+  *strandio, pongo
 =,  strand=strand:spider
 =>
@@ -22,6 +22,35 @@
     ::  failed  ! surface this somehow
     !!
   (pure:m +.upd)
+::
+++  take-asset-metadata
+  |=  [from=@ux item=@ux]
+  =/  m  (strand ,@ux)
+  ^-  form:m
+  ;<  wu=wallet-update:wallet  bind:m
+    %+  scry  wallet-update:wallet
+    /gx/wallet/asset/(scot %ux from)/(scot %ux item)/noun
+  ?>  ?=(%asset -.wu)
+  %-  pure:m
+  ?-  -.+.wu
+    %token    metadata.wu
+    %nft      metadata.wu
+    %unknown  0x0
+  ==
+::
+++  take-metadata-symbol
+  |=  [metadata=@ux]
+  =/  m  (strand ,@t)
+  ^-  form:m
+  ;<  wu=wallet-update:wallet  bind:m
+    %+  scry  wallet-update:wallet
+    /gx/wallet/metadata/(scot %ux metadata)/noun
+  ?>  ?=(%metadata -.wu)
+  %-  pure:m
+  ?-  -.+.wu
+    %token    symbol.wu
+    %nft      symbol.wu
+  ==
 --
 ::
 ^-  thread:spider
@@ -73,6 +102,12 @@
 ::  take receipt fact once txn is completed
 ::
 ;<  =sequencer-receipt:uqbar  bind:m  take-receipt
+::  get wallet metadata to show what token we sent
+::
+;<  metadata=@ux  bind:m  (take-asset-metadata [from item]:act)
+::  get token symbol from metadata
+::
+;<  symbol=@t  bind:m  (take-metadata-symbol metadata)
 ::  finally, produce message poke!
 ::
 ;<  ~  bind:m
@@ -85,7 +120,7 @@
           ''
           conversation-id.act
           %send-tokens
-          (crip "I just sent {<amount.act>} tokens to {<to.act>}")
+          (rap 3 ~[(scot %ud amount.act) ' ' symbol ' ' (scot %p to.act)])
           ~
           (silt ~[to.act])
       ==
