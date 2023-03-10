@@ -1,0 +1,10 @@
+:~  title+'Pongo'
+    info+'Chat by Uqbar'
+    color+0x72.7bf2
+    glob-http+['https://pongo-app-distro.s3.us-east-2.amazonaws.com/glob-0v3.du4a6.rf99l.cbivh.cvg0n.115n7.glob' 0v3.du4a6.rf99l.cbivh.cvg0n.115n7]
+    image+'https://pongo-app-distro.s3.us-east-2.amazonaws.com/urbit-icon.png'
+    base+'pongo'
+    version+[1 0 1]
+    website+'https://uqbar.network'
+    license+'MIT'
+==
